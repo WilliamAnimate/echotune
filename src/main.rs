@@ -1,0 +1,130 @@
+mod song;
+mod input;
+mod tui;
+
+use std::sync::{Arc, RwLock, mpsc::channel};
+
+macro_rules! send_control {
+    ($signal:expr, $($tx:expr),*) => {
+        $({
+            $tx.send($signal)?
+        })*
+    }
+}
+
+macro_rules! __exit_await_thread {
+    ($($thread:expr),*) => {
+        $(
+            $thread.join().unwrap();
+        )*
+    }
+}
+
+lazy_static::lazy_static!{
+    static ref PLAYLIST: Arc<RwLock<Vec<String>>> = Default::default();
+    static ref RENDER_TX: Arc<RwLock<String>> = Default::default();
+}
+
+fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
+    use std::{io::{BufReader, BufRead}, fs::File};
+
+    let reader = BufReader::new(File::open(file)?);
+
+    let mut lines = PLAYLIST.write().unwrap();
+    #[allow(deprecated)]
+    let home = std::env::home_dir().unwrap().to_str().unwrap().to_string(); // its fine; we never running on NT
+    for line in reader.lines() {
+        let mut line = line.unwrap(); // tf
+        // PERF: don't replace nothing and allocate a new String, unless we actually do start with ~
+        // maybe. idfk
+        if line.starts_with('~') {
+            line = line.replacen('~', &home, 1);
+        } else if line.starts_with("//") {
+            continue; // its a comment; skip
+        }
+        lines.push(line);
+    }
+
+    Ok(())
+}
+
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    use std::thread::spawn;
+    use echotune::SongControl::*;
+
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 2 {
+        println!("enter playlist");
+        return Err("no playlist file provided".into());
+    }
+
+    parse_playlist(&args[1])?;
+
+    let (rtx, rrx) = channel();
+    let render = spawn(move || {
+        let mut tooey = tui::tooey::Tooey::init();
+        tooey.render_set_mode(echotune::RenderMode::Full);
+        tooey.enter_alt_buffer().unwrap();
+        // tooey.leave_alt_buffer().unwrap();
+        loop {
+            tooey.tick();
+            let receive = rrx.try_recv();
+            if let Ok(k) = receive {
+                match k {
+                    DestroyAndExit => break, // the destructor will exit the alt buffer
+                    na => {
+                        #[cfg(debug_assertions)]
+                        eprintln!("the operation {na:?} is not applicable for rendering");
+                    }
+                };
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+    });
+
+    let (atx, arx) = channel::<echotune::SongControl>();
+    let audio = spawn(move || {
+        let mut audio = song::Song::new();
+        // audio.set_queue(PLAYLIST.clone().read().unwrap().to_vec());
+        audio.next_song();
+        audio.play();
+        loop {
+            // eprintln!("go");
+            let receive = arx.try_recv();
+            if let Ok(k) = receive {
+                match k {
+                    DestroyAndExit => break,
+                    na => {
+                        #[cfg(debug_assertions)]
+                        eprintln!("the operation {na:?} is not applicable for audio");
+                    }
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+    });
+
+    let mut input = input::Input::from_nothing_and_apply();
+    loop {
+        let i = input.blocking_wait_for_input();
+        match i {
+            VolumeUp => (),
+            DestroyAndExit => {
+                // send them sigterms'
+                send_control!(DestroyAndExit, rtx, atx);
+
+                // wait for the threads to finish
+                __exit_await_thread!(render, audio);
+
+                // restore terminal setttings (because i don't trust the destructor)
+                input.restore_terminal()?;
+
+                // and then let the kernel do the rest
+                return Ok(())
+            },
+            _ => (),
+        }
+    }
+}
+
