@@ -2,7 +2,7 @@ mod song;
 mod input;
 mod tui;
 
-use std::sync::{Arc, RwLock, mpsc::channel};
+use std::sync::{Arc, RwLock, atomic::{AtomicBool, Ordering::Relaxed}, mpsc::channel};
 
 macro_rules! send_control {
     ($signal:expr, $($tx:expr),*) => {
@@ -23,6 +23,7 @@ macro_rules! __exit_await_thread {
 lazy_static::lazy_static!{
     static ref PLAYLIST: Arc<RwLock<Vec<String>>> = Default::default();
     static ref RENDER_TX: Arc<RwLock<String>> = Default::default();
+    static ref CFG_IS_LOOPED: AtomicBool = AtomicBool::new(false);
 }
 
 fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -44,6 +45,7 @@ fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
         }
         lines.push(line);
     }
+    let _ = lines.pop(); // the last element is nothing, for some reason
 
     Ok(())
 }
@@ -73,9 +75,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Ok(k) = receive {
                 match k {
                     DestroyAndExit => break, // the destructor will exit the alt buffer
-                    na => {
+                    PrevSong => {
+                        let sub = match tooey.cursor_index_queue.checked_sub(1) {
+                            Some(n) => n,
+                            None => continue,
+                        };
+                        tooey.adjust_cursor_queue(sub);
+                    }
+                    NextSong => tooey.adjust_cursor_queue(tooey.cursor_index_queue + 1),
+                    ToggleLoop => CFG_IS_LOOPED.store(!CFG_IS_LOOPED.load(Relaxed), Relaxed),
+                    _na => {
                         #[cfg(debug_assertions)]
-                        eprintln!("the operation {na:?} is not applicable for rendering");
+                        eprintln!("the operation {_na:?} is not applicable for rendering");
                     }
                 };
             }
@@ -83,11 +94,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let (atx, arx) = channel::<echotune::SongControl>();
+    let (atx, arx) = channel();
     let audio = spawn(move || {
         let mut audio = song::Song::new();
-        // audio.set_queue(PLAYLIST.clone().read().unwrap().to_vec());
-        audio.next_song();
         audio.play();
         loop {
             // eprintln!("go");
@@ -95,11 +104,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Ok(k) = receive {
                 match k {
                     DestroyAndExit => break,
-                    na => {
+                    PrevSong => audio.prev_song(),
+                    NextSong => audio.next_song(),
+                    TogglePause => if audio.sink.is_paused() {audio.resume()} else {audio.pause()} // why no ternary operator in rust
+                    _na => {
                         #[cfg(debug_assertions)]
-                        eprintln!("the operation {na:?} is not applicable for audio");
+                        eprintln!("the operation {_na:?} is not applicable for audio");
                     }
                 }
+            }
+
+            if audio.sink.empty() && CFG_IS_LOOPED.load(Relaxed) {
+                // TODO: test this
+                audio.current_song();
             }
             std::thread::sleep(std::time::Duration::from_millis(50));
         }
@@ -109,7 +126,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let i = input.blocking_wait_for_input();
         match i {
-            VolumeUp => (),
             DestroyAndExit => {
                 // send them sigterms'
                 send_control!(DestroyAndExit, rtx, atx);
@@ -119,12 +135,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // restore terminal setttings (because i don't trust the destructor)
                 input.restore_terminal()?;
-
-                // and then let the kernel do the rest
-                return Ok(())
+                break;
             },
-            _ => (),
+            signal => {
+                send_control!(signal, rtx, atx);
+            }
         }
     }
+
+    Ok(())
 }
 

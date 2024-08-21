@@ -1,4 +1,7 @@
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Copy)]
+/// don't Box<SongControl> this value, or you're going to have a very hard time with .clone()
+/// because it will panic.
+/// :troll:
 pub enum SongControl {
     VolumeUp,
     VolumeDown,
@@ -15,6 +18,12 @@ pub enum SongControl {
     DestroyAndExit,
 
     Unset,
+}
+
+impl Clone for SongControl {
+    fn clone(&self) -> Self {
+        panic!("why are we on the heap???");
+    }
 }
 
 #[derive(PartialEq, Debug)]

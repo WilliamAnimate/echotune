@@ -54,7 +54,7 @@ impl Tooey<'_> {
             width: 0,
             height: 0,
             cursor: CursorLocation::None,
-            cursor_index_queue: 1,
+            cursor_index_queue: 0,
         }
     }
 
@@ -64,7 +64,9 @@ impl Tooey<'_> {
     }
 
     fn determine_terminal_size(&mut self) -> Result<(), std::io::Error> {
-        let ((width, height)) = termion::terminal_size()?;
+        use terminal_size::{Width, Height, terminal_size};
+
+        let (Width(width), Height(height)) = terminal_size().unwrap();
         self.width = width;
         self.height = height;
 
@@ -80,7 +82,6 @@ impl Tooey<'_> {
         self.rerender_display();
         writeln!(self.handle, "time taken to draw last frame: {:?}", time.elapsed());
         self.handle.flush();
-        // std::thread::sleep(std::time::Duration::from_secs(1));
     }
 
     pub fn rerender_display(&mut self) {
@@ -123,6 +124,11 @@ impl Tooey<'_> {
         let songs = crate::PLAYLIST.clone();
         let songs = songs.read().unwrap(); // shadowing go brr; fuck lifetimes
 
+        if self.cursor_index_queue as usize >= songs.len() {
+            // wrap back to the size of songs; the user is trying to access songs.len() + 1
+            // will panic otherwise, but callers dont need to care
+            self.cursor_index_queue = songs.len() as u16 - 1;
+        }
         self.__blankout_terminal();
         let opening_box = self.draw_box::<true>("queue", self.width);
         let closing_box = self.draw_box::<false>("", self.width);
@@ -137,7 +143,7 @@ impl Tooey<'_> {
             } else {
                 self.draw_entry(song)?
             };
-            write!(self.handle, "{}", entry);
+            write!(self.handle, "{entry}");
             index += 1;
         }
         write!(self.handle, "{closing_box}");
@@ -146,7 +152,7 @@ impl Tooey<'_> {
         write!(self.handle, "{opening_box1}");
         let currently_playing_song_name = &songs[self.cursor_index_queue as usize];
         let now_playing = self.draw_entry_centered(&format!("now playing: {currently_playing_song_name}"))?;
-        write!(self.handle, "{}", now_playing);
+        write!(self.handle, "{now_playing}");
         write!(self.handle, "{closing_box2}");
 
         self.handle.flush();
@@ -290,5 +296,4 @@ impl Drop for Tooey<'_> {
         self.leave_alt_buffer().unwrap();
     }
 }
-
 

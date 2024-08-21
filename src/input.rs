@@ -1,4 +1,5 @@
 use std::io::{self, Read};
+// i hate windows with a passion
 use std::os::unix::io::AsRawFd;
 use termios::*;
 
@@ -41,9 +42,7 @@ impl<'a> Input<'_> {
         let mut ret: echotune::SongControl = Unset;
         let mut buffer = [0; 1];
         let b = self.handle.read(&mut buffer).unwrap();
-        // dbg!(b);
         while b == 1 {
-            // println!("?");
             let byte = buffer[0];
 
             // ctrl+c
@@ -85,7 +84,7 @@ impl<'a> Input<'_> {
         }
 
         // if ret == SongControl::Unset {
-        //     println!("Note: SongControl is Unset!");
+        //     eprintln!("Note: SongControl is Unset!");
         //     ret = SongControl::No;
         // }
 
