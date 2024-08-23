@@ -31,6 +31,8 @@ pub struct Tooey<'a> {
 
     width: u16,
     height: u16,
+    playlist_len: u16, // don't anticipate playlist changing every second
+    scrolling_offset: usize,
     cursor: CursorLocation,
     pub cursor_index_queue: u16,
 }
@@ -53,13 +55,28 @@ impl Tooey<'_> {
             rendering_mode: RenderMode::Uninitialized,
             width: 0,
             height: 0,
+            playlist_len: 0,
+            scrolling_offset: 0,
             cursor: CursorLocation::None,
-            cursor_index_queue: 0,
+            cursor_index_queue: 31,
         }
     }
 
+    pub fn set_playlist_len(&mut self, len: u16) {
+        self.playlist_len = len;
+    }
+
+    // pub fn next_entry(&mut self) {
+    //     self.adjust_cursor_queue(self.cursor_index_queue + 1);
+    // }
+
     /// increment with tooey.cursor_index_queue + 1; decrement with tooey.cursor_index_queue - 1;
     pub fn adjust_cursor_queue(&mut self, n: u16) {
+        // if self.cursor_index_queue >= self.playlist_len {
+        //     self.cursor_index_queue = self.playlist_len as u16 - 1;
+        //     return;
+        // }
+        eprintln!("{} {}", self.cursor_index_queue, self.playlist_len);
         self.cursor_index_queue = n;
     }
 
@@ -137,20 +154,71 @@ impl Tooey<'_> {
         writeln!(self.handle, "timings: {:?}", std::time::Instant::now())?;
         write!(self.handle, "{opening_box}");
 
-        for (mut index, song) in (*songs).iter().enumerate() {
-            let entry: String = if index == self.cursor_index_queue.into() {
-                self.draw_highlighted_entry(song)?
+        let mut c1 = false;
+        let mut c2 = false;
+
+        let mut index = 0;
+        let mut starting_index = 0;
+        // let mut offset = self.scrolling_offset;
+        for _ in index..songs.len() {
+            if index >= (self.height - 10).into() {
+                // self.scrolling_offset -= 1;
+                break;
+            }
+            if index == 0 {
+                if self.cursor_index_queue >= self.height - 10 {
+                    c1 = true;
+                    if self.cursor_index_queue as usize != index {
+                        c2 = true;
+                        starting_index += 1;
+                    }
+                }
+            }
+            // else if self.cursor_index_queue.saturating_sub(self.height) == 0 {
+            //     self.scrolling_offset -= 1;
+            // }
+
+            // let line = songs[index + self.scrolling_offset].split("/").last().unwrap_or("");
+            let mut entry: String = Default::default();
+            if starting_index == self.cursor_index_queue.into() {
+                entry = self.draw_highlighted_entry(&format!("{}+{}={}; c1: {}, c2: {}", starting_index, self.scrolling_offset, index + self.scrolling_offset, c1, c2))?
+                // entry = self.draw_highlighted_entry(line)?
             } else {
-                self.draw_entry(song)?
+                entry = self.draw_entry(&format!("{}+{}={}; c1: {}, c2: {}", starting_index, self.scrolling_offset, index + self.scrolling_offset, c1, c2))?
+                // entry = self.draw_entry(line)?
             };
             write!(self.handle, "{entry}");
             index += 1;
+            c1 = false;
+            c2 = false;
         }
+
+        // for (mut index, song) in (*songs).iter().enumerate() {
+        //     if index >= (self.height - 10).into() {
+        //         // writeln!(self.handle, "{index}, {}", songs.len());
+        //         // std::thread::sleep(std::time::Duration::from_secs(1));
+        //         break;
+        //     }
+        //     if !first {
+        //         index = 999;
+        //         first = true;
+        //     }
+        //
+        //     let line = song.split('/').last().unwrap_or("");
+        //     let entry: String = if index == self.cursor_index_queue.into() {
+        //         self.draw_highlighted_entry(line)?
+        //     } else {
+        //         self.draw_entry(line)?
+        //     };
+        //     write!(self.handle, "{entry}");
+        //     index += 1;
+        // }
         write!(self.handle, "{closing_box}");
 
         // playback bar
         write!(self.handle, "{opening_box1}");
         let currently_playing_song_name = &songs[self.cursor_index_queue as usize];
+        let currently_playing_song_name = currently_playing_song_name.split('/').last().unwrap_or("");
         let now_playing = self.draw_entry_centered(&format!("now playing: {currently_playing_song_name}"))?;
         write!(self.handle, "{now_playing}");
         write!(self.handle, "{closing_box2}");
@@ -208,9 +276,9 @@ impl Tooey<'_> {
             },
             None => not_enough_space!(self),
         };
-        let dbg = self.draw_entry(&format!("post subtract: {pad_len} term len: {}, alloced {}", self.width, self.width - 2))?;
-        let dbg2 = self.draw_entry(&format!("text len: {}, text len %2: {}, term width %2: {}", text.len(), text.len() % 2, self.width % 2))?;
-        writeln!(self.handle, "{}\n{dbg2}", dbg);
+        // let dbg = self.draw_entry(&format!("post subtract: {pad_len} term len: {}, alloced {}", self.width, self.width - 2))?;
+        // let dbg2 = self.draw_entry(&format!("text len: {}, text len %2: {}, term width %2: {}", text.len(), text.len() % 2, self.width % 2))?;
+        // writeln!(self.handle, "{}\n{dbg2}", dbg);
         let mut ntext = String::with_capacity((self.width - 2).into());
 
         // :(
