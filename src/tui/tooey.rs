@@ -1,9 +1,12 @@
-// this crappy TUI engine is very "high" overhead; the code, in debug, has a catastrophically high,
+// this crappy TUI engine is very high overhead; the code, in debug, has a catastrophically high,
 // 0.0% CPU usage. This was done on an AMD A4-6210 with AMD Radeon R3 Graphics (4) @ 1.80 GHz.
 // any performance improvements should be considered.
 
-// N.B. Performance improvements come from reducing allocations. Do not premature optimize.
+// N.B. Performance improvements come from reducing allocations and memory copying.
+// Do not premature optimize. If statements cost nothing.
 use std::io::{stdout, StdoutLock, BufWriter, Write};
+use std::sync::atomic::Ordering::Relaxed;
+use crate::SONG_INDEX;
 use echotune::RenderMode;
 
 macro_rules! not_enough_space {
@@ -14,14 +17,14 @@ macro_rules! not_enough_space {
     }}
 }
 
-#[derive(Debug)]
-#[allow(unused)] // shut the fuck up
-enum CursorLocation {
-    Queue,
-    Nya,
-    NowPlaying,
-    None
-}
+// #[derive(Debug)]
+// #[allow(unused)] // shut the fuck up
+// enum CursorLocation {
+//     Queue,
+//     Nya,
+//     NowPlaying,
+//     None
+// }
 
 // #[derive(Debug)]
 #[allow(unused)]
@@ -33,7 +36,7 @@ pub struct Tooey<'a> {
     height: u16,
     playlist_len: u16, // don't anticipate playlist changing every second
     scrolling_offset: usize,
-    cursor: CursorLocation,
+    // cursor: CursorLocation,
     pub cursor_index_queue: u16,
 }
 
@@ -57,8 +60,8 @@ impl Tooey<'_> {
             height: 0,
             playlist_len: 0,
             scrolling_offset: 0,
-            cursor: CursorLocation::None,
-            cursor_index_queue: 31,
+            // cursor: CursorLocation::None,
+            cursor_index_queue: 0,
         }
     }
 
@@ -71,14 +74,14 @@ impl Tooey<'_> {
     // }
 
     /// increment with tooey.cursor_index_queue + 1; decrement with tooey.cursor_index_queue - 1;
-    pub fn adjust_cursor_queue(&mut self, n: u16) {
-        // if self.cursor_index_queue >= self.playlist_len {
-        //     self.cursor_index_queue = self.playlist_len as u16 - 1;
-        //     return;
-        // }
-        eprintln!("{} {}", self.cursor_index_queue, self.playlist_len);
-        self.cursor_index_queue = n;
-    }
+    // pub fn adjust_cursor_queue(&mut self, n: u16) {
+    //     // if self.cursor_index_queue >= self.playlist_len {
+    //     //     self.cursor_index_queue = self.playlist_len as u16 - 1;
+    //     //     return;
+    //     // }
+    //     eprintln!("{} {}", crate::SONG_INDEX.load(Relaxed), self.playlist_len);
+    //     self.cursor_index_queue = n;
+    // }
 
     fn determine_terminal_size(&mut self) -> Result<(), std::io::Error> {
         use terminal_size::{Width, Height, terminal_size};
@@ -117,12 +120,15 @@ impl Tooey<'_> {
     /// checks usually won't change unless the user is doing something. eg. resize terminal
     fn __pre_rerender_display(&mut self) {
         self.determine_terminal_size();
+        self.__calculate_offset(); // N.B. this must be ran after determine_terminal_size();
+                                   // otherwise, you risk a panic.
+        self.cursor_index_queue = SONG_INDEX.load(Relaxed);
     }
 
     fn __rerender_display(&mut self) -> Result<(), std::io::Error> {
         match self.rendering_mode {
             RenderMode::Full => {
-                self.__draw_full()?;
+                self.__draw_full_v2()?;
             },
             RenderMode::Safe => {
                 self.__draw_safe()?;
@@ -134,99 +140,235 @@ impl Tooey<'_> {
             #[allow(unreachable_code)] _ => unreachable!("how'd we get here? bad RenderMode value."),
         }
 
+        // self.handle.flush()?;
+
         Ok(())
     }
 
-    fn __draw_full(&mut self) -> Result<(), std::io::Error> {
-        let songs = crate::PLAYLIST.clone();
+    fn __calculate_offset(&mut self) {
+        // if (self.cursor_index_queue as usize) > self.height as usize - self.scrolling_offset {
+        // if ((self.height as usize - 12) + self.cursor_index_queue as usize) > self.scrolling_offset {
+        //     self.scrolling_offset += 1;
+        // }
+        if self.cursor_index_queue as usize >= self.height as usize - 12 + self.scrolling_offset {
+            self.scrolling_offset += 1;
+        }
+        // else if (self.cursor_index_queue as usize) < self.height as usize - 12 - self.scrolling_offset {
+        else if (self.cursor_index_queue as usize) <= self.scrolling_offset {
+            // self.scrolling_offset.saturating_sub(1);
+            self.scrolling_offset = self.cursor_index_queue as usize;
+        }
+    }
+
+    // PERF: do not use Box<dyn> here. the indirecton may cause perf degradation, and this is a hot
+    // code path.
+    fn __draw_full_v2(&mut self) -> Result<(), std::io::Error> {
+        let songs = &crate::PLAYLIST;
         let songs = songs.read().unwrap(); // shadowing go brr; fuck lifetimes
 
         if self.cursor_index_queue as usize >= songs.len() {
             // wrap back to the size of songs; the user is trying to access songs.len() + 1
             // will panic otherwise, but callers dont need to care
             self.cursor_index_queue = songs.len() as u16 - 1;
+            SONG_INDEX.store(self.cursor_index_queue, Relaxed);
+            // return Ok(());
+        } else if self.scrolling_offset >= songs.len() {
+            self.scrolling_offset = songs.len() - 1;
         }
+        // TODO: put this in __pre_rerender_display
         self.__blankout_terminal();
+        // writeln!(self.handle, "a {}, {}, {}", self.cursor_index_queue, self.height, self.scrolling_offset);
+        // writeln!(self.handle, "b {} < {} = {}", self.cursor_index_queue, self.height as usize - self.scrolling_offset, self.cursor_index_queue as usize > self.height as usize - self.scrolling_offset);
+        // writeln!(self.handle, "b {} > {} = {}", self.cursor_index_queue + (self.height - 12), self.scrolling_offset, self.cursor_index_queue as usize + (self.height as usize - 12) > self.scrolling_offset);
+        writeln!(self.handle, "b {} >= {} + {} = {}",
+            self.cursor_index_queue, self.height - 12,
+            self.scrolling_offset,
+            self.cursor_index_queue as usize > self.height as usize - 12 - self.scrolling_offset);
+        writeln!(self.handle, "d {} <= {} = {}",
+            self.cursor_index_queue,
+            self.scrolling_offset,
+            // (self.cursor_index_queue as usize) > self.height as usize - 12 - self.scrolling_offset);
+            (self.cursor_index_queue as usize) <= self.scrolling_offset);
+        // writeln!(self.handle, "c {} == {} = {}", self.cursor_index_queue, SONG_INDEX.load(Relaxed), self.cursor_index_queue == SONG_INDEX.load(Relaxed));
+        self.handle.flush();
+//         debug_assert!(self.cursor_index_queue == SONG_INDEX.load(Relaxed),
+//         "Inconsistent state: cursor_index_queue != SONG_INDEX! IOW, you've reached a serious synchronisation problem that could affect release mode.\n\
+// good luck. you've messed up big time. {} != {}", self.cursor_index_queue, SONG_INDEX.load(Relaxed));
+        // writeln!(self.handle, "timings: {:?}", std::time::Instant::now())?;
+        // TODO: make this only calculate once in determine_terminal_size, when size changes?
         let opening_box = self.draw_box::<true>("queue", self.width);
         let closing_box = self.draw_box::<false>("", self.width);
         let opening_box1 = self.draw_box::<true>("", self.width);
         let closing_box2 = self.draw_box::<false>("asdadsad", self.width);
-        writeln!(self.handle, "timings: {:?}", std::time::Instant::now())?;
-        write!(self.handle, "{opening_box}");
 
-        let mut c1 = false;
-        let mut c2 = false;
+        writeln!(self.handle, "{opening_box}");
 
-        let mut index = 0;
-        let mut starting_index = 0;
-        // let mut offset = self.scrolling_offset;
-        for _ in index..songs.len() {
-            if index >= (self.height - 10).into() {
-                // self.scrolling_offset -= 1;
+        // let offset = 3;
+        // self.scrolling_offset = 3;
+        // FIXME: make datatypes consistent (keep it all usize? pleas-)
+        // that might be a micro-optimization; idk if thats really gonna give such a big runtime
+        // impact
+        // but this _is_ a hot code path
+        // /shrug
+
+        // HACK: for some reason, this code thinks cursor_index_queue^self.scrolling_offset is the
+        // currently selected song. subtract it now.
+        // i will give you a hug if you find out why that is, and a workaround that isn't this ugly.
+        self.cursor_index_queue = self.cursor_index_queue - self.scrolling_offset as u16;
+        for i in 0..(self.height as usize - 12) + self.scrolling_offset {
+            // if (i as usize) < self.scrolling_offset {
+            //     continue;
+            // }
+            if i > songs.len() {
                 break;
             }
-            if index == 0 {
-                if self.cursor_index_queue >= self.height - 10 {
-                    c1 = true;
-                    if self.cursor_index_queue as usize != index {
-                        c2 = true;
-                        starting_index += 1;
-                    }
-                }
+            if (i as usize) < self.scrolling_offset {
+                continue;
             }
-            // else if self.cursor_index_queue.saturating_sub(self.height) == 0 {
-            //     self.scrolling_offset -= 1;
-            // }
+            if i as usize > songs.len() {
+                // TODO: fill in the rest of the spaces with nothing? this should be an impossible
+                // case unless i plan on adding `z` from vim
+                break; // we've drawn all playlist entries. will panic otherwise (and UB in C)
+            }
 
-            // let line = songs[index + self.scrolling_offset].split("/").last().unwrap_or("");
-            let mut entry: String = Default::default();
-            if starting_index == self.cursor_index_queue.into() {
-                entry = self.draw_highlighted_entry(&format!("{}+{}={}; c1: {}, c2: {}", starting_index, self.scrolling_offset, index + self.scrolling_offset, c1, c2))?
-                // entry = self.draw_highlighted_entry(line)?
+            let line = songs[i as usize + self.scrolling_offset].split("/").last().unwrap_or("");
+            // SAFETY: we break out of the loop once we've exceeded the length
+            // let line = unsafe { songs.get_unchecked(i as usize + self.scrolling_offset).split("/").last().unwrap_or("") };
+            // let mut entry: String = Default::default();
+            let mut entry: String = String::with_capacity(self.width.into());
+            // if i == (self.cursor_index_queue as usize) + self.scrolling_offset.saturating_sub(999999) {
+            if i == (self.cursor_index_queue as usize) {
+                entry = self.draw_highlighted_entry(line)?;
             } else {
-                entry = self.draw_entry(&format!("{}+{}={}; c1: {}, c2: {}", starting_index, self.scrolling_offset, index + self.scrolling_offset, c1, c2))?
-                // entry = self.draw_entry(line)?
-            };
+                entry = self.draw_entry(line)?;
+            }
             write!(self.handle, "{entry}");
-            index += 1;
-            c1 = false;
-            c2 = false;
         }
-
-        // for (mut index, song) in (*songs).iter().enumerate() {
-        //     if index >= (self.height - 10).into() {
-        //         // writeln!(self.handle, "{index}, {}", songs.len());
-        //         // std::thread::sleep(std::time::Duration::from_secs(1));
-        //         break;
-        //     }
-        //     if !first {
-        //         index = 999;
-        //         first = true;
-        //     }
-        //
-        //     let line = song.split('/').last().unwrap_or("");
-        //     let entry: String = if index == self.cursor_index_queue.into() {
-        //         self.draw_highlighted_entry(line)?
-        //     } else {
-        //         self.draw_entry(line)?
-        //     };
-        //     write!(self.handle, "{entry}");
-        //     index += 1;
-        // }
         write!(self.handle, "{closing_box}");
 
+        let line = songs[self.cursor_index_queue as usize + self.scrolling_offset].split("/").last().unwrap_or("");
+        let line = self.draw_entry(line)?;
         // playback bar
         write!(self.handle, "{opening_box1}");
-        let currently_playing_song_name = &songs[self.cursor_index_queue as usize];
-        let currently_playing_song_name = currently_playing_song_name.split('/').last().unwrap_or("");
-        let now_playing = self.draw_entry_centered(&format!("now playing: {currently_playing_song_name}"))?;
-        write!(self.handle, "{now_playing}");
+        write!(self.handle, "{line}");
         write!(self.handle, "{closing_box2}");
-
-        self.handle.flush();
+        writeln!(self.handle, "{}, {}", self.scrolling_offset, self.cursor_index_queue);
 
         Ok(())
     }
+
+    // fn __draw_full(&mut self) -> Result<(), std::io::Error> {
+    //     let songs = crate::PLAYLIST.clone();
+    //     let songs = songs.read().unwrap(); // shadowing go brr; fuck lifetimes
+    //
+    //     if self.cursor_index_queue as usize >= songs.len() {
+    //         // wrap back to the size of songs; the user is trying to access songs.len() + 1
+    //         // will panic otherwise, but callers dont need to care
+    //         self.cursor_index_queue = songs.len() as u16 - 1;
+    //     }
+    //     self.__blankout_terminal();
+    //     let opening_box = self.draw_box::<true>("queue", self.width);
+    //     let closing_box = self.draw_box::<false>("", self.width);
+    //     let opening_box1 = self.draw_box::<true>("", self.width);
+    //     let closing_box2 = self.draw_box::<false>("asdadsad", self.width);
+    //     writeln!(self.handle, "timings: {:?}", std::time::Instant::now())?;
+    //     write!(self.handle, "{opening_box}");
+    //
+    //     let mut c1 = false;
+    //     let mut c2 = false;
+    //
+    //     let mut index = 0;
+    //     let mut starting_index = 0;
+    //     // let mut offset = self.scrolling_offset;
+    //     for _ in 0..38 {
+    //         // if index >= (self.height - 10).into() {
+    //         if index >= (self.height).into() {
+    //             // self.scrolling_offset -= 1;
+    //             break;
+    //         }
+    //         // else if self.cursor_index_queue.saturating_sub(self.height) == 0 {
+    //         //     self.scrolling_offset -= 1;
+    //         // }
+    //
+    //         // let line = songs[index + self.scrolling_offset].split("/").last().unwrap_or("");
+    //         let mut entry: String = Default::default();
+    //         if starting_index == self.cursor_index_queue.into() {
+    //             entry = self.draw_highlighted_entry(&format!("{}+{}={}; c1: {}, c2: {}", starting_index, self.scrolling_offset, index + self.scrolling_offset, c1, c2))?
+    //             // entry = self.draw_highlighted_entry(line)?
+    //         } else {
+    //             entry = self.draw_entry(&format!("{}+{}={}; c1: {}, c2: {}", starting_index, self.scrolling_offset, index + self.scrolling_offset, c1, c2))?
+    //             // entry = self.draw_entry(line)?
+    //         };
+    //         write!(self.handle, "{entry}");
+    //         index += 1;
+    //         c1 = false;
+    //         c2 = false;
+    //     }
+    //
+    //     // for _ in index..songs.len() {
+    //     //     if index >= (self.height - 10).into() {
+    //     //         // self.scrolling_offset -= 1;
+    //     //         break;
+    //     //     }
+    //     //     if index == 0 {
+    //     //         if self.cursor_index_queue >= self.height - 10 {
+    //     //             c1 = true;
+    //     //             if self.cursor_index_queue as usize != index {
+    //     //                 c2 = true;
+    //     //                 starting_index += 1;
+    //     //             }
+    //     //         }
+    //     //     }
+    //     //     // else if self.cursor_index_queue.saturating_sub(self.height) == 0 {
+    //     //     //     self.scrolling_offset -= 1;
+    //     //     // }
+    //     //
+    //     //     // let line = songs[index + self.scrolling_offset].split("/").last().unwrap_or("");
+    //     //     let mut entry: String = Default::default();
+    //     //     if starting_index == self.cursor_index_queue.into() {
+    //     //         entry = self.draw_highlighted_entry(&format!("{}+{}={}; c1: {}, c2: {}", starting_index, self.scrolling_offset, index + self.scrolling_offset, c1, c2))?
+    //     //         // entry = self.draw_highlighted_entry(line)?
+    //     //     } else {
+    //     //         entry = self.draw_entry(&format!("{}+{}={}; c1: {}, c2: {}", starting_index, self.scrolling_offset, index + self.scrolling_offset, c1, c2))?
+    //     //         // entry = self.draw_entry(line)?
+    //     //     };
+    //     //     write!(self.handle, "{entry}");
+    //     //     index += 1;
+    //     //     c1 = false;
+    //     //     c2 = false;
+    // // }
+    //     // for (mut index, song) in (*songs).iter().enumerate() {
+    //     //     if index >= (self.height - 10).into() {
+    //     //         // writeln!(self.handle, "{index}, {}", songs.len());
+    //     //         // std::thread::sleep(std::time::Duration::from_secs(1));
+    //     //         break;
+    //     //     }
+    //     //     if !first {
+    //     //         index = 999;
+    //     //         first = true;
+    //     //     }
+    //     //
+    //     //     let line = song.split('/').last().unwrap_or("");
+    //     //     let entry: String = if index == self.cursor_index_queue.into() {
+    //     //         self.draw_highlighted_entry(line)?
+    //     //     } else {
+    //     //         self.draw_entry(line)?
+    //     //     };
+    //     //     write!(self.handle, "{entry}");
+    //     //     index += 1;
+    //     // }
+    //     write!(self.handle, "{closing_box}");
+    //
+    //     // playback bar
+    //     write!(self.handle, "{opening_box1}");
+    //     let currently_playing_song_name = &songs[self.cursor_index_queue as usize];
+    //     let currently_playing_song_name = currently_playing_song_name.split('/').last().unwrap_or("");
+    //     let now_playing = self.draw_entry_centered(&format!("now playing: {currently_playing_song_name}"))?;
+    //     write!(self.handle, "{now_playing}");
+    //     write!(self.handle, "{closing_box2}");
+    //
+    //     Ok(())
+    // }
 
     fn __blankout_terminal(&mut self) {
         write!(self.handle, "\x1b[2J\x1b[H"); // top left corner; clear screen
@@ -242,7 +384,6 @@ impl Tooey<'_> {
         writeln!(self.handle, "Not enough space for the terminal!")?;
         writeln!(self.handle, "Resize your terminal in order to see the queue. Keyboard input is still functional.")?;
         writeln!(self.handle, "To suppress this message, enter rm -rf /* in another shell session running under UID0 (root).")?;
-        self.handle.flush();
         self.render_set_mode(RenderMode::Full); // TODO: change this to know what was there
                                                 // previously
 

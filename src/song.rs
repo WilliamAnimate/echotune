@@ -37,7 +37,7 @@ impl Song {
     /// this can silently fail if this is the first song.
     pub fn prev_song(&mut self) {
         self.reset();
-        dbg!(self.current_song_index);
+        // dbg!(self.current_song_index);
         let checked = match self.current_song_index.checked_sub(1) {
             Some(k) => k,
             None => return,
@@ -56,7 +56,7 @@ impl Song {
 
     pub fn next_song(&mut self) {
         self.reset();
-        dbg!(self.current_song_index);
+        // dbg!(self.current_song_index);
         self.current_song_index += 1;
         self.append_song(self.current_song_index);
         self.play()
@@ -68,16 +68,16 @@ impl Song {
 
         // let to_open = &self.songs[index as usize];
         let to_open = &crate::PLAYLIST.read().unwrap().to_vec();
-        dbg!(&to_open.len(), index);
+        // dbg!(&to_open.len(), index);
         if index as usize >= to_open.len() {
             // wrap back to the size of the playlist; the user is trying to access playlist.len() + 1
             // will panic otherwise, but callers dont need to care.
             self.current_song_index = to_open.len() as u16 - 1;
             return;
         }
-        dbg!(to_open, &to_open[index as usize], index as usize, index);
+        // dbg!(to_open, &to_open[index as usize], index as usize, index);
         let file = BufReader::new(File::open(&to_open[index as usize]).unwrap());
-        dbg!(&file);
+        // dbg!(&file);
         let source = Decoder::new(file).unwrap();
         // self.current_duration = Some(source.total_duration().unwrap());
         // dbg!(self.current_duration);
