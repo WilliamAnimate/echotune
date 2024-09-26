@@ -2,6 +2,9 @@
 
 A tui music player that gives some thought on time spent on the CPU.
 
+> [!IMPORTANT]
+> echotune is not a production-ready music player! However, feel free to play around with it if you figure out the ropes.
+
 ## Does that mean it's performant and wont lag my system?
 
 Yes! The bulk (as of right now, all of) echotune's code is written on [this](https://www.ordinateursarabais.com/produit/acer-es1-521-40hc-hdmi-6-go-ram-1-tb/)[^1]. it takes about 200µs to draw the tty and i've never seen it use >7% CPU usage.
