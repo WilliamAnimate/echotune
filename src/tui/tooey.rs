@@ -57,14 +57,18 @@ impl Tooey<'_> {
         self.playlist_len = len;
     }
 
-    fn determine_terminal_size(&mut self) -> Result<(), std::io::Error> {
-        use terminal_size::{Width, Height, terminal_size};
+    fn determine_terminal_size(&mut self) {
+        use libc::{ioctl, STDOUT_FILENO, TIOCGWINSZ, winsize};
 
-        let (Width(width), Height(height)) = terminal_size().unwrap();
-        self.width = width;
-        self.height = height;
-
-        Ok(())
+        let w: winsize = unsafe { std::mem::zeroed() };
+        unsafe { ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) };
+        self.width = w.ws_col;
+        self.height = w.ws_row;
+        assert!(self.width != 0 || self.height != 0,
+        "if you are seeing this, and you did not resize the window to 0x0, it means libc introduced an error that i am unable to track down and reproduce outside of this project. however, heres what i do know:\n\
+this only occurs in release builds. black_box and setting libc to be compiled with opt-level 0 does not work.\n\
+i also have tried using stderr and stdin, but it produces the same result.\n\
+try reverting the commit in which this message is introduced.");
     }
 
     pub fn render_set_mode(&mut self, mode: RenderMode) {
@@ -223,6 +227,7 @@ impl Tooey<'_> {
         writeln!(self.handle, "Not enough space for the terminal!")?;
         writeln!(self.handle, "Resize your terminal in order to see the queue. Keyboard input is still functional.")?;
         writeln!(self.handle, "To suppress this message, enter rm -rf /* in another shell session running under UID0 (root).")?;
+        writeln!(self.handle, "width: {}, height: {}", self.width, self.height);
         self.render_set_mode(RenderMode::Full); // TODO: change this to know what was there
                                                 // previously
 
