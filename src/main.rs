@@ -101,6 +101,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     DestroyAndExit => break,
                     PrevSong | NextSong => audio.rejitter_song(),
                     TogglePause => if audio.sink.is_paused() {audio.play()} else {audio.pause()} // why no ternary operator in rust
+                    VolumeUp => {
+                        let prev_vol = audio.sink.volume();
+                        audio.sink.set_volume(prev_vol + 0.1);
+                    },
+                    VolumeDown => {
+                        let prev_vol = audio.sink.volume();
+                        let request_vol = prev_vol - 0.1;
+                        // no .saturating_sub for f32 cause primitive type, so we do this:
+                        let normalized_vol = if request_vol < 0.0 { 0.0 } else { request_vol };
+                        audio.sink.set_volume(normalized_vol);
+                    },
                     _na => {
                         #[cfg(debug_assertions)]
                         eprintln!("the operation {_na:?} is not applicable for audio");
