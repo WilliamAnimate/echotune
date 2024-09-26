@@ -17,16 +17,6 @@ macro_rules! not_enough_space {
     }}
 }
 
-// #[derive(Debug)]
-// #[allow(unused)] // shut the fuck up
-// enum CursorLocation {
-//     Queue,
-//     Nya,
-//     NowPlaying,
-//     None
-// }
-
-// #[derive(Debug)]
 #[allow(unused)]
 pub struct Tooey<'a> {
     handle: BufWriter<StdoutLock<'a>>,
@@ -36,7 +26,6 @@ pub struct Tooey<'a> {
     height: u16,
     playlist_len: u16, // don't anticipate playlist changing every second
     scrolling_offset: usize,
-    // cursor: CursorLocation,
     pub cursor_index_queue: u16,
 }
 
@@ -60,7 +49,6 @@ impl Tooey<'_> {
             height: 0,
             playlist_len: 0,
             scrolling_offset: 0,
-            // cursor: CursorLocation::None,
             cursor_index_queue: 0,
         }
     }
