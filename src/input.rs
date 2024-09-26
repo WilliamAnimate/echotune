@@ -45,19 +45,36 @@ impl<'a> Input<'_> {
         while b == 1 {
             let byte = buffer[0];
 
-            // ctrl+c
+            // ctrl+c (byte == 3 is end of text)
             if byte == 3 {
                 ret = DestroyAndExit;
                 break;
             }
 
-            // special keys
-            // TODO: emums
+            // byte 27 is esc (\x1B)
             if byte == 27 {
-                // escape sequence for arrow keys starts with 27 (<esc>)
                 self.handle.read_exact(&mut buffer).unwrap();
+                // 91 is [
                 if buffer[0] == 91 {
+                    /*
+                     * if we get to this point, it means we got `\x1B[`
+                     * how? im glad you didn't ask:
+                     * byte == 27: `\x1B` (aka <esc>)
+                     * buffer[0] == 91: `[`
+                     * that ultimately gives us `\x1B[`
+                     * by that point, if you want to do up arrow, you would get:
+                     * `\x1B[A` (where A is keycode 65... more on that below...)
+                     */
                     self.handle.read_exact(&mut buffer).unwrap();
+                    /*
+                     * 65 - up arrow
+                     * 66 - down arrow
+                     * 67 - right arrow
+                     * 68 - left arrow
+                     * these can be represented as a char, however, it might cause more confusion
+                     * than good (because `A => VolumeUp` implies pressing A increases the volume
+                     * at first glance)
+                     */
                     ret = match buffer[0] {
                         65 => VolumeUp,
                         66 => VolumeDown,
@@ -69,11 +86,12 @@ impl<'a> Input<'_> {
                     ret = No; // no paths here.
                 }
             } else {
-                ret = match byte {
-                    114 => ToggleLoop,
-                    72 => PrevSong,
-                    76 => NextSong,
-                    32 => TogglePause,
+                let char = dtoc(byte);
+                ret = match char {
+                    'r' => ToggleLoop,
+                    'k' => PrevSong,
+                    'j' => NextSong,
+                    ' ' => TogglePause,
                     _ => No,
                 }
             }
@@ -97,5 +115,14 @@ impl Drop for Input<'_> {
             eprintln!("can't restore the terminal to its original state. THIS IS A BUG!\n{err}");
         }
     }
+}
+
+/// stands for **d**ec **to** **c**char
+fn dtoc(i: u8) -> char {
+    if i > 127 {
+        // TODO: handle this in the impossible case it does occur.
+        panic!("i ({i}) > 127!");
+    }
+    char::from_u32(i as u32).unwrap()
 }
 
