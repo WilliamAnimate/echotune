@@ -138,7 +138,7 @@ impl Tooey<'_> {
     // code path.
     fn __draw_full_v2(&mut self) -> Result<(), std::io::Error> {
         let songs = &crate::PLAYLIST;
-        let songs = songs.read().unwrap(); // shadowing go brr; fuck lifetimes
+        let songs = songs.read(); // shadowing go brr; fuck lifetimes
 
         if self.cursor_index_queue as usize >= songs.len() {
             // wrap back to the size of songs; the user is trying to access songs.len() + 1

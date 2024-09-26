@@ -2,7 +2,8 @@ mod song;
 mod input;
 mod tui;
 
-use std::sync::{Arc, RwLock, atomic::{AtomicBool, AtomicU16, Ordering::Relaxed}, mpsc::channel};
+use std::sync::{atomic::{AtomicBool, AtomicU16, Ordering::Relaxed}, mpsc::channel};
+use parking_lot::RwLock;
 
 macro_rules! send_control {
     ($signal:expr, $($tx:expr),*) => {
@@ -21,7 +22,7 @@ macro_rules! __exit_await_thread {
 }
 
 lazy_static::lazy_static!{
-    static ref PLAYLIST: Arc<RwLock<Vec<String>>> = Default::default();
+    static ref PLAYLIST: RwLock<Vec<String>> = Default::default();
     static ref CFG_IS_LOOPED: AtomicBool = AtomicBool::new(false);
     static ref SONG_INDEX: AtomicU16 = std::sync::atomic::AtomicU16::new(0);
 }
@@ -31,7 +32,7 @@ fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     let reader = BufReader::new(File::open(file)?);
 
-    let mut lines = PLAYLIST.write().unwrap();
+    let mut lines = PLAYLIST.write();
     #[allow(deprecated)]
     let home = std::env::home_dir().unwrap().to_str().unwrap().to_string(); // its fine; we never running on NT
     for line in reader.lines() {

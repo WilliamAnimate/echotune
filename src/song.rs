@@ -45,7 +45,7 @@ impl Song {
     fn append_song(&mut self, index: u16) {
         use std::{fs::File, io::BufReader};
 
-        let to_open = &crate::PLAYLIST.read().unwrap().to_vec();
+        let to_open = &crate::PLAYLIST.read();
         if index as usize >= to_open.len() {
             // we've overflowed. callers account for this, so return immedately.
             return;
