@@ -117,7 +117,7 @@ impl Drop for Input<'_> {
     }
 }
 
-/// stands for **d**ec **to** **c**char
+/// stands for **d**ec **to** **c**har
 fn dtoc(i: u8) -> char {
     if i > 127 {
         // TODO: handle this in the impossible case it does occur.
