@@ -24,7 +24,7 @@ macro_rules! __exit_await_thread {
 lazy_static::lazy_static!{
     static ref PLAYLIST: RwLock<Vec<String>> = Default::default();
     static ref CFG_IS_LOOPED: AtomicBool = AtomicBool::new(false);
-    static ref SONG_INDEX: AtomicU16 = std::sync::atomic::AtomicU16::new(0);
+    static ref SONG_INDEX: AtomicU16 = AtomicU16::new(0);
 }
 
 fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
