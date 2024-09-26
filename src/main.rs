@@ -98,8 +98,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Ok(k) = receive {
                 match k {
                     DestroyAndExit => break,
-                    PrevSong => audio.prev_song(),
-                    NextSong => audio.next_song(),
+                    PrevSong | NextSong => audio.rejitter_song(),
                     TogglePause => if audio.sink.is_paused() {audio.resume()} else {audio.pause()} // why no ternary operator in rust
                     _na => {
                         #[cfg(debug_assertions)]
@@ -111,9 +110,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if audio.sink.empty() {
                 if CFG_IS_LOOPED.load(Relaxed) {
                     // TODO: test this
-                    audio.current_song();
+                    audio.rejitter_song();
                 } else {
-                    audio.next_song();
+                    audio.rejitter_song();
                     SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed);
                 }
             }
