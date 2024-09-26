@@ -136,9 +136,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 input.restore_terminal()?;
                 break;
             },
-            // TODO: this may have serious synchronisation problems. see PrevSong and
-            // NextSong entries above, in the match.
-            // as of right now, this system seems to be foolproof.
             NextSong => {
                 SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed);
                 send_control!(NextSong, rtx, atx);
