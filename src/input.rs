@@ -83,11 +83,6 @@ impl<'a> Input<'_> {
             }
         }
 
-        // if ret == SongControl::Unset {
-        //     eprintln!("Note: SongControl is Unset!");
-        //     ret = SongControl::No;
-        // }
-
         ret
     }
 

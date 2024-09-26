@@ -78,16 +78,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Ok(k) = receive {
                 match k {
                     DestroyAndExit => break, // the destructor will exit the alt buffer
-                    // PrevSong => {
-                    //     let sub = match SONG_INDEX.load(Relaxed).checked_sub(1) {
-                    //         Some(n) => n,
-                    //         None => continue,
-                    //     };
-                    //     SONG_INDEX.store(sub, Relaxed);
-                    //     // tooey.adjust_cursor_queue(sub);
-                    // }
-                    // NextSong => SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed),
-                    // NextSong => tooey.adjust_cursor_queue(tooey.cursor_index_queue + 1),
                     ToggleLoop => CFG_IS_LOOPED.store(!CFG_IS_LOOPED.load(Relaxed), Relaxed),
                     _na => {
                         #[cfg(debug_assertions)]
@@ -104,7 +94,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut audio = song::Song::new();
         audio.play();
         loop {
-            // eprintln!("go");
             let receive = arx.try_recv();
             if let Ok(k) = receive {
                 match k {

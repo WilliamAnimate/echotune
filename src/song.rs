@@ -64,20 +64,15 @@ impl Song {
 
     fn append_song(&mut self, index: u16) {
         use std::{fs::File, io::BufReader};
-        // use rodio::Source;
 
-        // let to_open = &self.songs[index as usize];
         let to_open = &crate::PLAYLIST.read().unwrap().to_vec();
-        // dbg!(&to_open.len(), index);
         if index as usize >= to_open.len() {
             // wrap back to the size of the playlist; the user is trying to access playlist.len() + 1
             // will panic otherwise, but callers dont need to care.
             self.current_song_index = to_open.len() as u16 - 1;
             return;
         }
-        // dbg!(to_open, &to_open[index as usize], index as usize, index);
         let file = BufReader::new(File::open(&to_open[index as usize]).unwrap());
-        // dbg!(&file);
         let source = Decoder::new(file).unwrap();
         // self.current_duration = Some(source.total_duration().unwrap());
         // dbg!(self.current_duration);

@@ -35,6 +35,3 @@ pub enum RenderMode {
     Uninitialized
 }
 
-// pub fn read_playlist() -> Vec<String> {
-// }
-
