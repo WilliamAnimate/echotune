@@ -62,13 +62,12 @@ impl Tooey<'_> {
 
         let w: winsize = unsafe { std::mem::zeroed() };
         unsafe { ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) };
+        dbg!(STDOUT_FILENO, TIOCGWINSZ); // N.B. this NEEDS to be here, otherwise release builds don't work
+                                         // god knows why
         self.width = w.ws_col;
         self.height = w.ws_row;
         assert!(self.width != 0 || self.height != 0,
-        "if you are seeing this, and you did not resize the window to 0x0, it means libc introduced an error that i am unable to track down and reproduce outside of this project. however, heres what i do know:\n\
-this only occurs in release builds. black_box and setting libc to be compiled with opt-level 0 does not work.\n\
-i also have tried using stderr and stdin, but it produces the same result.\n\
-try reverting the commit in which this message is introduced.");
+        "libc is broken");
     }
 
     pub fn render_set_mode(&mut self, mode: RenderMode) {
