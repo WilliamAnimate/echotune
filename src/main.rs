@@ -99,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 match k {
                     DestroyAndExit => break,
                     PrevSong | NextSong => audio.rejitter_song(),
-                    TogglePause => if audio.sink.is_paused() {audio.resume()} else {audio.pause()} // why no ternary operator in rust
+                    TogglePause => if audio.sink.is_paused() {audio.play()} else {audio.pause()} // why no ternary operator in rust
                     _na => {
                         #[cfg(debug_assertions)]
                         eprintln!("the operation {_na:?} is not applicable for audio");

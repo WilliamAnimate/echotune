@@ -62,10 +62,6 @@ impl Song {
         self.sink.pause();
     }
 
-    pub fn resume(&mut self) {
-        self.sink.play();
-    }
-
     pub fn play(&mut self) {
         self.sink.play();
     }
