@@ -162,7 +162,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             },
             NextSong => {
-                SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed);
+                let i = SONG_INDEX.load(Relaxed);
+                if (i as usize) < PLAYLIST.read().len() {
+                    continue;
+                }
+                SONG_INDEX.store(i + 1, Relaxed);
                 send_control!(NextSong, rtx, atx);
             }
             PrevSong => {
