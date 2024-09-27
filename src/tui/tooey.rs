@@ -205,7 +205,14 @@ impl Tooey<'_> {
     }
 
     fn __draw_safe(&mut self) -> Result<(), std::io::Error> {
-        todo!("safe mode not implemented");
+        let songs = &crate::PLAYLIST.read();
+        let song = songs[self.cursor_index_queue as usize].split("/").last().unwrap_or("");
+
+        self.__blankout_terminal();
+        writeln!(self.handle, "{song}");
+        self.handle.flush();
+
+        Ok(())
     }
 
     fn __draw_not_enough_space(&mut self) -> Result<(), std::io::Error> {
