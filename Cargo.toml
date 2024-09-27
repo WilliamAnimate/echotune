@@ -11,6 +11,9 @@ rodio = { git = "https://github.com/WilliamAnimate/rodio-iwantthetotalduration.g
 terminal_size = { version = "0.3.0", default-features = false }
 termios = "0.3.3"
 
+[profile.dev.package."*"]
+opt-level = 'z'
+
 [profile.release]
 opt-level = 'z'
 lto = true
