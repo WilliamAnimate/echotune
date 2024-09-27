@@ -179,7 +179,7 @@ impl Tooey<'_> {
             let line = songs[i as usize + self.scrolling_offset].split("/").last().unwrap_or("");
             // SAFETY: we break out of the loop once we've exceeded the length
             // let line = unsafe { songs.get_unchecked(i as usize + self.scrolling_offset).split("/").last().unwrap_or("") };
-            let mut entry: String = String::with_capacity(self.width.into());
+            #[allow(unused_assignments)] let mut entry: String = String::with_capacity(self.width.into());
             if i == (self.cursor_index_queue as usize) {
                 entry = self.draw_highlighted_entry(line)?;
             } else {
