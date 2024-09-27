@@ -68,8 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let render = spawn(move || {
         let mut tooey = tui::tooey::Tooey::init();
         tooey.render_set_mode(echotune::RenderMode::Full);
-        // tooey.enter_alt_buffer().unwrap();
-        // tooey.leave_alt_buffer().unwrap();
+        tooey.enter_alt_buffer().unwrap();
         loop {
             tooey.tick();
 //             debug_assert!(tooey.cursor_index_queue == SONG_INDEX.load(Relaxed),
