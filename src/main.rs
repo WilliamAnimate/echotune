@@ -123,8 +123,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // TODO: test this
                     audio.rejitter_song();
                 } else {
-                    audio.rejitter_song();
                     SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed);
+                    audio.rejitter_song();
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(50));
