@@ -199,7 +199,7 @@ impl Tooey<'_> {
         write!(self.handle, "{closing_box}");
 
         let line = songs[self.cursor_index_queue as usize + self.scrolling_offset].split("/").last().unwrap_or("");
-        let line = self.draw_entry(line)?;
+        let line = self.draw_entry_centered(line)?;
         // playback bar
         write!(self.handle, "{opening_box1}");
         write!(self.handle, "{line}");
