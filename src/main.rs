@@ -51,18 +51,33 @@ fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn quit_with(e: &str, s: &str) -> Result<std::convert::Infallible, Box<dyn std::error::Error>> {
+    eprintln!("{e}");
+    return Err(s.into());
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use std::thread::spawn;
     use echotune::SongControl::*;
+    use file_format::Kind;
 
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        eprintln!("enter playlist");
-        return Err("no playlist file provided".into());
+        quit_with("argv[1] should be a media file or echotune-compatable playlist.", "argv[1] not supplied")?;
     }
 
-    parse_playlist(&args[1])?;
+    let file = &args[1];
+
+    let _ = match file_format::FileFormat::from_file(file)?.kind() {
+        Kind::Audio => {
+            let mut lines = PLAYLIST.write();
+            lines.push(file.to_string());
+        },
+        Kind::Other => parse_playlist(&file)?,
+        filekind => {
+            let _ = quit_with(&format!("argv[1] should be a media file or echotune-compatable playlist. media type of {filekind:?} is not supported."), "argv[1] unsupported")?;
+        },
+    };
 
     let (rtx, rrx) = channel();
     let render = spawn(move || {
