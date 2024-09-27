@@ -210,6 +210,9 @@ impl Tooey<'_> {
 
         self.__blankout_terminal();
         writeln!(self.handle, "{song}");
+        let current_len = format_time(crate::SONG_CURRENT_LEN.load(Relaxed));
+        let total_len = format_time(crate::SONG_TOTAL_LEN.load(Relaxed));
+        writeln!(self.handle, "{current_len} / {total_len}");
         self.handle.flush();
 
         Ok(())
@@ -332,6 +335,18 @@ impl Tooey<'_> {
 impl Drop for Tooey<'_> {
     fn drop(&mut self) {
         self.leave_alt_buffer().unwrap();
+    }
+}
+
+fn format_time(t: u64) -> String {
+    let hrs =   t / 3600;
+    let mins = (t % 3600) / 60;
+    let secs =  t % 60;
+
+    if hrs == 0 {
+        format!("{:02}:{:02}", mins, secs)
+    } else {
+        format!("{:02}:{:02}:{:02}", hrs, mins, secs)
     }
 }
 

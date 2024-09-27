@@ -10,7 +10,7 @@ pub struct Song {
     pub sink: Sink,
     pub current_source: Option<Decoder<std::io::BufReader<std::fs::File>>>,
 
-    pub current_duration: Option<std::time::Duration>,
+    pub total_duration: Option<std::time::Duration>,
 }
 
 impl Song {
@@ -22,7 +22,7 @@ impl Song {
             _stream,
             sink,
             current_source: None,
-            current_duration: None,
+            total_duration: None,
         };
 
         s.append_song(0);
@@ -44,6 +44,7 @@ impl Song {
 
     fn append_song(&mut self, index: u16) {
         use std::{fs::File, io::BufReader};
+        use rodio::Source;
 
         let to_open = &crate::PLAYLIST.read();
         if index as usize >= to_open.len() {
@@ -52,8 +53,7 @@ impl Song {
         }
         let file = BufReader::new(File::open(&to_open[index as usize]).unwrap());
         let source = Decoder::new(file).unwrap();
-        // self.current_duration = Some(source.total_duration().unwrap());
-        // dbg!(self.current_duration);
+        self.total_duration = source.total_duration();
 
         self.sink.append(source);
     }

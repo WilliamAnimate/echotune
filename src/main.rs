@@ -2,7 +2,7 @@ mod song;
 mod input;
 mod tui;
 
-use std::sync::{atomic::{AtomicBool, AtomicU16, Ordering::Relaxed}, mpsc::channel};
+use std::sync::{atomic::{AtomicBool, AtomicU16, AtomicU64, Ordering::Relaxed}, mpsc::channel};
 use parking_lot::RwLock;
 
 macro_rules! send_control {
@@ -25,6 +25,8 @@ lazy_static::lazy_static!{
     static ref PLAYLIST: RwLock<Vec<String>> = Default::default();
     static ref CFG_IS_LOOPED: AtomicBool = AtomicBool::new(false);
     static ref SONG_INDEX: AtomicU16 = AtomicU16::new(0);
+    static ref SONG_TOTAL_LEN: AtomicU64 = AtomicU64::new(0);
+    static ref SONG_CURRENT_LEN: AtomicU64 = AtomicU64::new(0);
 }
 
 fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -143,7 +145,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed);
                     audio.rejitter_song();
                 }
+            } else {
+                // there is a bug here: sometimes, this returns None.
+                // some mp3s work, but others don't. i dont know why precisely.
+                let total_dur = match audio.total_duration {
+                    Some(n) => n.as_secs(),
+                    None => 0,
+                };
+                SONG_CURRENT_LEN.store(audio.sink.get_pos().as_secs(), Relaxed);
+                SONG_TOTAL_LEN.store(total_dur, Relaxed);
             }
+
             std::thread::sleep(std::time::Duration::from_millis(50));
         }
     });
