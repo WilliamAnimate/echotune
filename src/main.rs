@@ -67,10 +67,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let file = &args[1];
+    let mut render_requested_mode = echotune::RenderMode::Full;
 
     let _ = match file_format::FileFormat::from_file(file)?.kind() {
         Kind::Audio => {
             let mut lines = PLAYLIST.write();
+            render_requested_mode = echotune::RenderMode::Safe; // only one song, so do minimal
             lines.push(file.to_string());
         },
         Kind::Other => parse_playlist(&file)?,
@@ -82,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rtx, rrx) = channel();
     let render = spawn(move || {
         let mut tooey = tui::tooey::Tooey::init();
-        tooey.render_set_mode(echotune::RenderMode::Full);
+        tooey.render_set_mode(render_requested_mode);
         tooey.enter_alt_buffer().unwrap();
         loop {
             tooey.tick();
