@@ -7,7 +7,7 @@ edition = "2021"
 file-format = "0.25.0"
 lazy_static = "1.5.0"
 parking_lot = "0.12.3"
-rodio = "0.19.0"
+rodio = { git = "https://github.com/WilliamAnimate/rodio-iwantthetotalduration.git" }
 terminal_size = { version = "0.3.0", default-features = false }
 termios = "0.3.3"
 
