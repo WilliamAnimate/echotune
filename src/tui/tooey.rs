@@ -2,6 +2,8 @@
 // 0.0% CPU usage. This was done on an AMD A4-6210 with AMD Radeon R3 Graphics (4) @ 1.80 GHz.
 // any performance improvements should be considered.
 
+#![allow(unused_must_use)]
+
 // N.B. Performance improvements come from reducing allocations and memory copying.
 // Do not premature optimize. If statements cost nothing.
 use std::io::{stdout, StdoutLock, BufWriter, Write};
@@ -17,19 +19,16 @@ macro_rules! not_enough_space {
     }}
 }
 
-#[allow(unused)]
 pub struct Tooey<'a> {
     handle: BufWriter<StdoutLock<'a>>,
     rendering_mode: RenderMode,
 
     width: u16,
     height: u16,
-    playlist_len: u16, // don't anticipate playlist changing every second
     scrolling_offset: usize,
     pub cursor_index_queue: u16,
 }
 
-#[allow(unused)] // shut the fuck up
 impl Tooey<'_> {
     /// creates and primes the Tooey type, which... does the tui stuff
     ///
@@ -47,24 +46,17 @@ impl Tooey<'_> {
             rendering_mode: RenderMode::Uninitialized,
             width: 0,
             height: 0,
-            playlist_len: 0,
             scrolling_offset: 0,
             cursor_index_queue: 0,
         }
     }
 
-    pub fn set_playlist_len(&mut self, len: u16) {
-        self.playlist_len = len;
-    }
-
-    fn determine_terminal_size(&mut self) -> Result<(), std::io::Error> {
+    fn determine_terminal_size(&mut self) {
         use terminal_size::{Width, Height, terminal_size};
 
         let (Width(width), Height(height)) = terminal_size().unwrap();
         self.width = width;
         self.height = height;
-
-        Ok(())
     }
 
     pub fn render_set_mode(&mut self, mode: RenderMode) {
@@ -188,7 +180,6 @@ impl Tooey<'_> {
             // SAFETY: we break out of the loop once we've exceeded the length
             // let line = unsafe { songs.get_unchecked(i as usize + self.scrolling_offset).split("/").last().unwrap_or("") };
             let mut entry: String = String::with_capacity(self.width.into());
-            // if i == (self.cursor_index_queue as usize) + self.scrolling_offset.saturating_sub(999999) {
             if i == (self.cursor_index_queue as usize) {
                 entry = self.draw_highlighted_entry(line)?;
             } else {
@@ -239,15 +230,14 @@ impl Tooey<'_> {
         Ok(())
     }
 
-    fn __draw_entry(&mut self, text: &str, term_len: u16, padding: usize) -> String {
+    fn __draw_entry(&mut self, text: &str, padding: usize) -> String {
         format!("│{}{}{}", text, &" ".repeat(padding), "\x1B[0m│")
     }
 
     fn draw_entry_centered(&mut self, text: &str) -> Result<String, std::io::Error> {
-        let width = self.width as usize;
         let padding = 0;
 
-        let pad_len = match (self.width.checked_sub((text.len()).try_into().unwrap())) {
+        let pad_len = match self.width.checked_sub((text.len()).try_into().unwrap()) {
             Some(n) => {
                 match n.checked_sub(2) {
                     Some(n) => (n / 2) as usize,
@@ -279,7 +269,7 @@ impl Tooey<'_> {
             ntext.push(' ');
         }
 
-        Ok(self.__draw_entry(&ntext, self.width, padding))
+        Ok(self.__draw_entry(&ntext, padding))
     }
 
     fn draw_entry(&mut self, text: &str) -> Result<String, std::io::Error> {
@@ -288,7 +278,7 @@ impl Tooey<'_> {
         if padding.is_none() {
             not_enough_space!(self);
         }
-        Ok(self.__draw_entry(text, self.width, padding.unwrap()))
+        Ok(self.__draw_entry(text, padding.unwrap()))
     }
 
     fn draw_highlighted_entry(&mut self, text: &str) -> Result<String, std::io::Error> {
@@ -302,7 +292,7 @@ impl Tooey<'_> {
         };
 
         let out = format!("\x1B[48;2;245;194;231m\x1B[38;2;30;30;46m{text}");
-        Ok(self.__draw_entry(&out, self.width, padding))
+        Ok(self.__draw_entry(&out, padding))
     }
 
     /// false for opening, true for closing
