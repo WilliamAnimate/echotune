@@ -170,7 +170,7 @@ impl Tooey<'_> {
             if (i as usize) < self.scrolling_offset {
                 continue;
             }
-            if i as usize > songs.len() {
+            if i as usize >= songs.len() {
                 // TODO: fill in the rest of the spaces with nothing? this should be an impossible
                 // case unless i plan on adding `z` from vim
                 break; // we've drawn all playlist entries. will panic otherwise (and UB in C)
