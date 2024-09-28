@@ -128,6 +128,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let normalized_vol = if request_vol < 0.0 { 0.0 } else { request_vol };
                         audio.sink.set_volume(normalized_vol);
                     },
+                    // seeking may fail. if so, then silently fail, because who cares??
+                    SeekForward => {
+                        let _ = audio.sink.try_seek(audio.sink.get_pos() + std::time::Duration::from_secs(5));
+                    }
+                    SeekBackward => {
+                        let _ = audio.sink.try_seek(audio.sink.get_pos().saturating_sub(std::time::Duration::from_secs(5)));
+                    }
                     _na => {
                         #[cfg(debug_assertions)]
                         eprintln!("the operation {_na:?} is not applicable for audio");
