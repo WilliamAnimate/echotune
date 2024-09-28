@@ -212,7 +212,9 @@ impl Tui<'_> {
         writeln!(self.handle, "{song}");
         let current_len = format_time(crate::SONG_CURRENT_LEN.load(Relaxed));
         let total_len = format_time(crate::SONG_TOTAL_LEN.load(Relaxed));
+        let vol = f32_to_percent(crate::VOLUME_LEVEL.load(Relaxed));
         writeln!(self.handle, "{current_len} / {total_len}");
+        writeln!(self.handle, "󰕾 {vol}%");
         self.handle.flush();
 
         Ok(())
@@ -348,5 +350,10 @@ fn format_time(t: u64) -> String {
     } else {
         format!("{:02}:{:02}:{:02}", hrs, mins, secs)
     }
+}
+
+/// nah not really you need to append the % yourself
+fn f32_to_percent(f: f32) -> f32 {
+    (f * 100.0).trunc()
 }
 

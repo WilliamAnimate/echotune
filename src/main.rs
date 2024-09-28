@@ -27,6 +27,7 @@ lazy_static::lazy_static!{
     static ref SONG_INDEX: AtomicU16 = AtomicU16::new(0);
     static ref SONG_TOTAL_LEN: AtomicU64 = AtomicU64::new(0);
     static ref SONG_CURRENT_LEN: AtomicU64 = AtomicU64::new(0);
+    static ref VOLUME_LEVEL: echotune::AtomicF32 = echotune::AtomicF32::new(0.0);
 }
 
 fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -142,6 +143,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     audio.rejitter_song();
                 }
             } else {
+                // task: synchronise global variables based on what we have.
+
                 // there is a bug here: sometimes, this returns None.
                 // some mp3s work, but others don't. i dont know why precisely.
                 let total_dur = match audio.total_duration {
@@ -150,6 +153,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 };
                 SONG_CURRENT_LEN.store(audio.sink.get_pos().as_secs(), Relaxed);
                 SONG_TOTAL_LEN.store(total_dur, Relaxed);
+
+                VOLUME_LEVEL.store(audio.sink.volume(), Relaxed);
             }
 
             std::thread::sleep(std::time::Duration::from_millis(50));

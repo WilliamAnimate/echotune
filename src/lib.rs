@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 #[derive(PartialEq, Eq, Debug, Copy)]
 /// don't Box<SongControl> this value, or you're going to have a very hard time with .clone()
 /// because it will panic.
@@ -33,5 +35,22 @@ pub enum RenderMode {
     Reading, // loading playlist
     NoSpace,
     Uninitialized
+}
+
+pub struct AtomicF32(AtomicUsize);
+
+/// no hardware support bruh
+impl AtomicF32 {
+    #[inline] pub fn new(v: f32) -> Self {
+        AtomicF32(AtomicUsize::new(v.to_bits().try_into().unwrap()))
+    }
+
+    #[inline] pub fn load(&self, order: Ordering) -> f32 {
+        f32::from_bits(self.0.load(order).try_into().unwrap())
+    }
+
+    #[inline] pub fn store(&self, val: f32, order: Ordering) {
+        self.0.store(val.to_bits().try_into().unwrap(), order);
+    }
 }
 
