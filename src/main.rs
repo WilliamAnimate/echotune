@@ -136,7 +136,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if audio.sink.empty() {
                 if CFG_IS_LOOPED.load(Relaxed) {
-                    // TODO: test this
                     audio.rejitter_song();
                 } else {
                     SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed);
