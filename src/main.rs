@@ -85,14 +85,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (rtx, rrx) = channel();
     let render = spawn(move || {
-        let mut tooey = tui::tooey::Tooey::init();
-        tooey.render_set_mode(render_requested_mode);
-        tooey.enter_alt_buffer().unwrap();
+        let mut tui = tui::Tui::init();
+        tui.render_set_mode(render_requested_mode);
+        tui.enter_alt_buffer().unwrap();
         loop {
-            tooey.tick();
-//             debug_assert!(tooey.cursor_index_queue == SONG_INDEX.load(Relaxed),
-//             "Inconsistent state: cursor_index_queue != SONG_INDEX! IOW, you've reached a serious synchronisation problem that could affect release mode.\n\
-// good luck. you've messed up big time. {} != {}", tooey.cursor_index_queue, SONG_INDEX.load(Relaxed));
+            tui.tick();
             let receive = rrx.try_recv();
             if let Ok(k) = receive {
                 match k {

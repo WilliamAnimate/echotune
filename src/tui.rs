@@ -19,7 +19,7 @@ macro_rules! not_enough_space {
     }}
 }
 
-pub struct Tooey<'a> {
+pub struct Tui<'a> {
     handle: BufWriter<StdoutLock<'a>>,
     rendering_mode: RenderMode,
 
@@ -29,11 +29,11 @@ pub struct Tooey<'a> {
     pub cursor_index_queue: u16,
 }
 
-impl Tooey<'_> {
+impl Tui<'_> {
     /// creates and primes the Tooey type, which... does the tui stuff
     ///
     /// it is recommended to create this on another thread.
-    pub fn init() -> Tooey<'static> {
+    pub fn init() -> Tui<'static> {
         // lock stdout for perf; no other component should write directly there.
         // panic! writes to stderr
         let stdout = stdout().lock();
@@ -41,7 +41,7 @@ impl Tooey<'_> {
         // switch, so increases overhead on the system itself), we buffer the stdout.
         let handle = BufWriter::new(stdout);
 
-        Tooey {
+        Tui {
             handle,
             rendering_mode: RenderMode::Uninitialized,
             width: 0,
@@ -332,7 +332,7 @@ impl Tooey<'_> {
     }
 }
 
-impl Drop for Tooey<'_> {
+impl Drop for Tui<'_> {
     fn drop(&mut self) {
         self.leave_alt_buffer().unwrap();
     }
