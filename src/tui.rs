@@ -242,10 +242,6 @@ impl Tui<'_> {
         Ok(())
     }
 
-    fn __draw_entry(&mut self, text: &str, padding: usize) -> String {
-        format!("│{}{}{}", text, &" ".repeat(padding), "\x1B[0m│")
-    }
-
     fn draw_entry_centered(&mut self, text: &str) -> Result<String, std::io::Error> {
         let padding = 0;
 
@@ -281,7 +277,7 @@ impl Tui<'_> {
             ntext.push(' ');
         }
 
-        Ok(self.__draw_entry(&ntext, padding))
+        Ok(box_draw_entry(&ntext, padding))
     }
 
     fn draw_entry(&mut self, text: &str) -> Result<String, std::io::Error> {
@@ -290,21 +286,18 @@ impl Tui<'_> {
         if padding.is_none() {
             not_enough_space!(self);
         }
-        Ok(self.__draw_entry(text, padding.unwrap()))
+        Ok(box_draw_entry(text, padding.unwrap()))
     }
 
     fn draw_highlighted_entry(&mut self, text: &str) -> Result<String, std::io::Error> {
-        // \e[1;33;4;44m
         let width = self.width as usize;
-        let padding = match width.checked_sub(text.len() + 2) {
-            Some(padding) => padding,
-            None => {
-                not_enough_space!(self);
-            }
-        };
+        let padding = width.checked_sub(text.len() + 2);
+        if padding.is_none() {
+            not_enough_space!(self);
+        }
 
         let out = format!("\x1B[48;2;245;194;231m\x1B[38;2;30;30;46m{text}");
-        Ok(self.__draw_entry(&out, padding))
+        Ok(box_draw_entry(&out, padding.unwrap()))
     }
 
     /// false for opening, true for closing
@@ -355,5 +348,9 @@ fn format_time(t: u64) -> String {
 /// nah not really you need to append the % yourself
 fn f32_to_percent(f: f32) -> f32 {
     (f * 100.0).trunc()
+}
+
+fn box_draw_entry(text: &str, padding: usize) -> String {
+    format!("│{}{}{}", text, &" ".repeat(padding), "\x1B[0m│")
 }
 
