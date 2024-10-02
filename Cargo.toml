@@ -2,6 +2,7 @@
 name = "echotune"
 version = "0.1.0-canary-1"
 edition = "2021"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 file-format = "0.25.0"
