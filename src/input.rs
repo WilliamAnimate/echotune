@@ -39,10 +39,11 @@ impl<'a> Input<'_> {
     pub fn blocking_wait_for_input(&mut self) -> echotune::SongControl {
         use echotune::SongControl::*;
 
-        let mut ret: echotune::SongControl = Unset;
+        let mut ret: echotune::SongControl;
         let mut buffer = [0; 1];
         let b = self.handle.read(&mut buffer).unwrap();
-        while b == 1 {
+        debug_assert!(b == 1, "1 byte not read");
+        loop {
             let byte = buffer[0];
 
             // ctrl+c (byte == 3 is end of text)

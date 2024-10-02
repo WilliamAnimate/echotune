@@ -162,21 +162,21 @@ impl Tui<'_> {
         // HACK: for some reason, this code thinks cursor_index_queue^self.scrolling_offset is the
         // currently selected song. subtract it now.
         // i will give you a hug if you find out why that is, and a workaround that isn't this ugly.
-        self.cursor_index_queue = self.cursor_index_queue - self.scrolling_offset as u16;
+        self.cursor_index_queue -= self.scrolling_offset as u16;
         for i in 0..(self.height as usize - 12) + self.scrolling_offset {
             if i > songs.len() {
                 break;
             }
-            if (i as usize) < self.scrolling_offset {
+            if i < self.scrolling_offset {
                 continue;
             }
-            if i as usize >= songs.len() {
+            if i >= songs.len() {
                 // TODO: fill in the rest of the spaces with nothing? this should be an impossible
                 // case unless i plan on adding `z` from vim
                 break; // we've drawn all playlist entries. will panic otherwise (and UB in C)
             }
 
-            let line = songs[i as usize + self.scrolling_offset].split("/").last().unwrap_or("");
+            let line = songs[i + self.scrolling_offset].split("/").last().unwrap_or("");
             // SAFETY: we break out of the loop once we've exceeded the length
             // let line = unsafe { songs.get_unchecked(i as usize + self.scrolling_offset).split("/").last().unwrap_or("") };
             #[allow(unused_assignments)] let mut entry: String = String::with_capacity(self.width.into());

@@ -56,7 +56,7 @@ fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
 
 fn quit_with(e: &str, s: &str) -> Result<std::convert::Infallible, Box<dyn std::error::Error>> {
     eprintln!("{e}");
-    return Err(s.into());
+    Err(s.into())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -72,13 +72,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let file = &args[1];
     let mut render_requested_mode = echotune::RenderMode::Full;
 
-    let _ = match file_format::FileFormat::from_file(file)?.kind() {
+    match file_format::FileFormat::from_file(file)?.kind() {
         Kind::Audio => {
             let mut lines = PLAYLIST.write();
             render_requested_mode = echotune::RenderMode::Safe; // only one song, so do minimal
             lines.push(file.to_string());
         },
-        Kind::Other => parse_playlist(&file)?,
+        Kind::Other => parse_playlist(file)?,
         filekind => {
             let _ = quit_with(&format!("argv[1] should be a media file or echotune-compatable playlist. media type of {filekind:?} is not supported."), "argv[1] unsupported")?;
         },
