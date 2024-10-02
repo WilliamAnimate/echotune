@@ -3,7 +3,6 @@ use std::io::{self, Read};
 use std::os::unix::io::AsRawFd;
 use termios::*;
 
-// #[allow(unused)]
 pub struct Input<'a> {
     handle: io::StdinLock<'a>,
     fd: i32,

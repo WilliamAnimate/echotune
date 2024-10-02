@@ -1,14 +1,12 @@
 use rodio::{OutputStreamHandle, OutputStream, Decoder, Sink};
 use std::sync::atomic::Ordering::Relaxed;
 
-#[allow(unused)]
 pub struct Song {
     // N.B. KEEP STREAM HANDLE HERE TO NOT DROP IT!
     // this is important for playing audio.
     _stream_handle: OutputStreamHandle,
     _stream: OutputStream,
     pub sink: Sink,
-    pub current_source: Option<Decoder<std::io::BufReader<std::fs::File>>>,
 
     pub total_duration: Option<std::time::Duration>,
 }
@@ -21,7 +19,6 @@ impl Song {
             _stream_handle,
             _stream,
             sink,
-            current_source: None,
             total_duration: None,
         };
 
