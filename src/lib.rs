@@ -32,7 +32,6 @@ impl Clone for SongControl {
 pub enum RenderMode {
     Safe, // if term is too small, or if under resource constraints, or user specified, or
     Full, // the entire TUI
-    Reading, // loading playlist
     NoSpace,
     Uninitialized
 }

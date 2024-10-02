@@ -103,7 +103,6 @@ impl Tui<'_> {
                 self.__draw_not_enough_space()?;
             }
             RenderMode::Uninitialized => panic!("Invalid state: rendering_mode is Uninitialized. Did you forget to call .render_set_mode?"),
-            #[allow(unreachable_code)] _ => unreachable!("how'd we get here? bad RenderMode value."),
         }
 
         // self.handle.flush()?;
