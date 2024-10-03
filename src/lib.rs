@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(PartialEq, Eq, Debug, Copy)]
