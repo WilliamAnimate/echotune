@@ -2,8 +2,16 @@ mod song;
 mod input;
 mod tui;
 
-use std::sync::{atomic::{AtomicBool, AtomicU16, AtomicU64, Ordering::Relaxed}, mpsc::channel};
+use std::sync::{atomic::{AtomicBool, AtomicU16, AtomicU64, Ordering::Relaxed}, mpsc::channel, Arc};
 use parking_lot::RwLock;
+
+macro_rules! send_control_errorless {
+    ($signal:expr, $($tx:expr),*) => {
+        $({
+            let _ = $tx.send($signal);
+        })*
+    }
+}
 
 macro_rules! send_control {
     ($signal:expr, $($tx:expr),*) => {
@@ -84,7 +92,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     };
 
+    let (mtx, mrx) = channel();
+    let mtx = Arc::new(mtx);
+    let audio_over_mtx = mtx.clone();
+    let ctrlc_mtx = mtx.clone();
+
     let (rtx, rrx) = channel();
+    let rtx = Arc::new(rtx);
+    let main_rtx = rtx.clone();
     let render = spawn(move || {
         let mut tui = tui::Tui::init();
         tui.render_set_mode(render_requested_mode);
@@ -107,6 +122,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let (atx, arx) = channel();
+    let atx = Arc::new(atx);
+    let main_atx = atx.clone();
     let audio = spawn(move || {
         let mut audio = song::Song::new();
         audio.play();
@@ -143,11 +160,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             if audio.sink.empty() {
+                let song_index = SONG_INDEX.load(Relaxed);
                 if CFG_IS_LOOPED.load(Relaxed) {
                     audio.rejitter_song();
-                } else {
+                } else if (song_index as usize) > PLAYLIST.read().len() {
                     SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed);
                     audio.rejitter_song();
+                } else {
+                    send_control_errorless!(DestroyAndExit, audio_over_mtx);
+                    break;
                 }
             } else {
                 // task: synchronise global variables based on what we have.
@@ -168,41 +189,53 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let mut input = input::Input::from_nothing_and_apply();
-    loop {
-        let i = input.blocking_wait_for_input();
-        match i {
-            DestroyAndExit => {
-                // send them sigterms'
-                send_control!(DestroyAndExit, rtx, atx);
-
-                // wait for the threads to finish
-                __exit_await_thread!(render, audio);
-
-                // restore terminal setttings (because i don't trust the destructor)
-                input.restore_terminal()?;
-                break;
-            },
-            NextSong => {
-                if PLAYLIST.read().len() != 1 {
-                    let i = SONG_INDEX.load(Relaxed);
-                    SONG_INDEX.store(i + 1, Relaxed);
-                    send_control!(NextSong, rtx, atx);
+    let _input = spawn(move || {
+        let mut input = input::Input::from_nothing_and_apply();
+        loop {
+            let i = input.blocking_wait_for_input();
+            match i {
+                DestroyAndExit => {
+                    let _ = input.restore_terminal();
+                    send_control_errorless!(DestroyAndExit, ctrlc_mtx);
+                    break;
+                },
+                NextSong => {
+                    if PLAYLIST.read().len() != 1 {
+                        let i = SONG_INDEX.load(Relaxed);
+                        SONG_INDEX.store(i + 1, Relaxed);
+                        send_control_errorless!(NextSong, rtx, atx);
+                    }
+                }
+                PrevSong => {
+                    let sub = match SONG_INDEX.load(Relaxed).checked_sub(1) {
+                        Some(n) => n,
+                        None => continue,
+                    };
+                    SONG_INDEX.store(sub, Relaxed);
+                    send_control_errorless!(PrevSong, rtx, atx);
+                }
+                No => (), // there is nothing
+                signal => {
+                    send_control_errorless!(signal, rtx, atx);
                 }
             }
-            PrevSong => {
-                let sub = match SONG_INDEX.load(Relaxed).checked_sub(1) {
-                    Some(n) => n,
-                    None => continue,
-                };
-                SONG_INDEX.store(sub, Relaxed);
-                send_control!(PrevSong, rtx, atx);
-            }
-            No => (), // there is nothing
-            signal => {
-                send_control!(signal, rtx, atx);
-            }
         }
+    });
+
+    loop {
+        let recv = mrx.recv().unwrap();
+        match recv {
+            DestroyAndExit => {
+                send_control!(DestroyAndExit, main_rtx, main_atx);
+
+                // wait for the threads to finish
+                // FIXME: input doesnt seem to work. it hangs.
+                __exit_await_thread!(render, audio);
+
+                break;
+            }
+            _ => (), // dont care
+        };
     }
 
     Ok(())
