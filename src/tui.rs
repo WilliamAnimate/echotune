@@ -205,6 +205,10 @@ impl Tui<'_> {
 
     fn __draw_safe(&mut self) -> Result<(), std::io::Error> {
         let songs = &crate::PLAYLIST.read();
+        if self.cursor_index_queue as usize >= songs.len() {
+            self.cursor_index_queue = songs.len() as u16 - 1;
+            SONG_INDEX.store(self.cursor_index_queue, Relaxed);
+        }
         let song = songs[self.cursor_index_queue as usize].split("/").last().unwrap_or("");
 
         self.__blankout_terminal();
