@@ -2,6 +2,7 @@ mod song;
 mod input;
 mod tui;
 mod file_format;
+mod configuration;
 
 use std::sync::{atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering::Relaxed}, mpsc::channel, Arc};
 use std::{io::{BufReader, BufRead}, fs::File};
@@ -70,6 +71,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use std::thread::spawn;
     use echotune::SongControl::*;
     use echotune::FileFormat;
+
+    let cfg = configuration::Config::parse(echotune::ConfigurationMode::Default);
+    if cfg.main.crash_on_execute {
+        panic!("nya~");
+    }
 
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
