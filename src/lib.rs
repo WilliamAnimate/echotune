@@ -46,6 +46,12 @@ pub enum FileFormat {
     Other
 }
 
+#[derive(PartialEq)]
+pub enum ConfigurationMode<'a> {
+    Default,
+    Custom(&'a str)
+}
+
 pub struct AtomicF32(AtomicUsize);
 
 /// no hardware support bruh
