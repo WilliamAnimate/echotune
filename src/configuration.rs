@@ -2,6 +2,10 @@ use serde::Deserialize;
 
 #[cfg(target_os = "linux")]
 static DEFAULT_CFG_PATH: &'static str = ".config/echotune/echotune.toml";
+#[cfg(target_os = "windows")]
+static DEFAULT_CFG_PATH: &'static str = "AppData/Roaming/echotune/echotune.toml";
+#[cfg(target_os = "macos")]
+static DEFAULT_CFG_PATH: &'static str = "Library/Preferences/echotune/echotune.toml";
 
 #[derive(Deserialize, Debug)]
 pub struct Config {
