@@ -44,8 +44,7 @@ fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
     let reader = BufReader::new(File::open(file)?);
 
     let mut lines = PLAYLIST.write();
-    #[allow(deprecated)]
-    let home = std::env::home_dir().unwrap().to_str().unwrap().to_string(); // its fine; we never running on NT
+    let home = std::env::var("HOME").unwrap_or_else(|_| String::new());
     for line in reader.lines() {
         let mut line = line.unwrap(); // tf
         // PERF: don't replace nothing and allocate a new String, unless we actually do start with ~
