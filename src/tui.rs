@@ -128,8 +128,7 @@ impl Tui<'_> {
     // PERF: do not use Box<dyn> here. the indirecton may cause perf degradation, and this is a hot
     // code path.
     fn __draw_full_v2(&mut self) -> Result<(), std::io::Error> {
-        let songs = &crate::PLAYLIST;
-        let songs = songs.read(); // shadowing go brr; fuck lifetimes
+        let songs = &crate::PLAYLIST.read();
 
         if self.cursor_index_queue as usize >= songs.len() {
             // wrap back to the size of songs; the user is trying to access songs.len() + 1
