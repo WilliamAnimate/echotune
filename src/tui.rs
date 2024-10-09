@@ -94,7 +94,7 @@ impl Tui<'_> {
     fn __rerender_display(&mut self) -> Result<(), std::io::Error> {
         match self.rendering_mode {
             RenderMode::Full => {
-                self.__draw_full_v2()?;
+                self.__draw_full()?;
             },
             RenderMode::Safe => {
                 self.__draw_safe()?;
@@ -127,7 +127,7 @@ impl Tui<'_> {
 
     // PERF: do not use Box<dyn> here. the indirecton may cause perf degradation, and this is a hot
     // code path.
-    fn __draw_full_v2(&mut self) -> Result<(), std::io::Error> {
+    fn __draw_full(&mut self) -> Result<(), std::io::Error> {
         let songs = &crate::PLAYLIST.read();
 
         if self.cursor_index_queue as usize >= songs.len() {
