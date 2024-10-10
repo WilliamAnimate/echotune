@@ -35,7 +35,7 @@ impl Song {
     pub fn rejitter_song(&mut self) {
         self.reset();
         let song = crate::SONG_INDEX.load(Relaxed);
-        self.append_song(song);
+        self.append_song(song.try_into().unwrap());
         self.play();
     }
 

@@ -2,7 +2,7 @@ mod song;
 mod input;
 mod tui;
 
-use std::sync::{atomic::{AtomicBool, AtomicU16, AtomicU64, Ordering::Relaxed}, mpsc::channel, Arc};
+use std::sync::{atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering::Relaxed}, mpsc::channel, Arc};
 use parking_lot::RwLock;
 
 macro_rules! send_control_errorless {
@@ -32,7 +32,7 @@ macro_rules! __exit_await_thread {
 lazy_static::lazy_static!{
     static ref PLAYLIST: RwLock<Vec<String>> = Default::default();
     static ref CFG_IS_LOOPED: AtomicBool = AtomicBool::new(false);
-    static ref SONG_INDEX: AtomicU16 = AtomicU16::new(0);
+    static ref SONG_INDEX: AtomicUsize = AtomicUsize::new(0);
     static ref SONG_TOTAL_LEN: AtomicU64 = AtomicU64::new(0);
     static ref SONG_CURRENT_LEN: AtomicU64 = AtomicU64::new(0);
     static ref VOLUME_LEVEL: echotune::AtomicF32 = echotune::AtomicF32::new(0.0);
