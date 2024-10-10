@@ -26,7 +26,7 @@ pub struct Tui<'a> {
     width: u16,
     height: u16,
     scrolling_offset: usize,
-    pub cursor_index_queue: u16,
+    pub cursor_index_queue: usize,
 }
 
 impl Tui<'_> {
@@ -133,7 +133,7 @@ impl Tui<'_> {
         if self.cursor_index_queue as usize >= songs.len() {
             // wrap back to the size of songs; the user is trying to access songs.len() + 1
             // will panic otherwise, but callers dont need to care
-            self.cursor_index_queue = songs.len() as u16 - 1;
+            self.cursor_index_queue = songs.len() - 1;
             SONG_INDEX.store(self.cursor_index_queue, Relaxed);
         } else if self.scrolling_offset >= songs.len() {
             self.scrolling_offset = songs.len() - 1;
@@ -160,7 +160,7 @@ impl Tui<'_> {
         // HACK: for some reason, this code thinks cursor_index_queue^self.scrolling_offset is the
         // currently selected song. subtract it now.
         // i will give you a hug if you find out why that is, and a workaround that isn't this ugly.
-        self.cursor_index_queue -= self.scrolling_offset as u16;
+        self.cursor_index_queue -= self.scrolling_offset;
         for i in 0..(self.height as usize - 12) + self.scrolling_offset {
             if i > songs.len() {
                 break;
@@ -203,7 +203,7 @@ impl Tui<'_> {
     fn __draw_safe(&mut self) -> Result<(), std::io::Error> {
         let songs = &crate::PLAYLIST.read();
         if self.cursor_index_queue as usize >= songs.len() {
-            self.cursor_index_queue = songs.len() as u16 - 1;
+            self.cursor_index_queue = songs.len() - 1;
             SONG_INDEX.store(self.cursor_index_queue, Relaxed);
         }
         let song = songs[self.cursor_index_queue as usize].split("/").last().unwrap_or("");
