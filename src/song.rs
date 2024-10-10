@@ -35,20 +35,20 @@ impl Song {
     pub fn rejitter_song(&mut self) {
         self.reset();
         let song = crate::SONG_INDEX.load(Relaxed);
-        self.append_song(song.try_into().unwrap());
+        self.append_song(song);
         self.play();
     }
 
-    fn append_song(&mut self, index: u16) {
+    fn append_song(&mut self, index: usize) {
         use std::{fs::File, io::BufReader};
         use rodio::Source;
 
         let to_open = &crate::PLAYLIST.read();
-        if index as usize >= to_open.len() {
+        if index >= to_open.len() {
             // we've overflowed. callers account for this, so return immedately.
             return;
         }
-        let file = BufReader::new(File::open(&to_open[index as usize]).unwrap());
+        let file = BufReader::new(File::open(&to_open[index]).unwrap());
         let source = Decoder::new(file).unwrap();
         self.total_duration = source.total_duration();
 
