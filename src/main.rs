@@ -165,7 +165,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let song_index = SONG_INDEX.load(Relaxed);
                 if CFG_IS_LOOPED.load(Relaxed) {
                     audio.rejitter_song();
-                } else if (song_index as usize) > PLAYLIST.read().len() {
+                } else if song_index > PLAYLIST.read().len() {
                     SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed);
                     audio.rejitter_song();
                 } else {
