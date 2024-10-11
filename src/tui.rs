@@ -108,18 +108,18 @@ impl Tui<'_> {
     }
 
     fn __calculate_offset(&mut self) {
-        if self.cursor_index_queue as usize >= self.height as usize - 12 + self.scrolling_offset {
+        if self.cursor_index_queue >= self.height as usize - 12 + self.scrolling_offset {
             self.scrolling_offset += 1;
         }
-        else if (self.cursor_index_queue as usize) <= self.scrolling_offset {
-            self.scrolling_offset = self.cursor_index_queue as usize;
+        else if self.cursor_index_queue <= self.scrolling_offset {
+            self.scrolling_offset = self.cursor_index_queue;
         }
     }
 
     fn __draw_full(&mut self) -> Result<(), std::io::Error> {
         let songs = &crate::PLAYLIST.read();
 
-        if self.cursor_index_queue as usize >= songs.len() {
+        if self.cursor_index_queue >= songs.len() {
             // wrap back to the size of songs; the user is trying to access songs.len() + 1
             // will panic otherwise, but callers dont need to care
             self.cursor_index_queue = songs.len() - 1;
@@ -158,7 +158,7 @@ impl Tui<'_> {
 
             let line = songs[i + self.scrolling_offset].split("/").last().unwrap_or("");
             #[allow(unused_assignments)] let mut entry: String = String::with_capacity(self.width.into());
-            if i == (self.cursor_index_queue as usize) {
+            if i == self.cursor_index_queue {
                 entry = self.draw_highlighted_entry(line)?;
             } else {
                 entry = self.draw_entry(line)?;
@@ -167,7 +167,7 @@ impl Tui<'_> {
         }
         write!(self.handle, "{closing_box}");
 
-        let line = songs[self.cursor_index_queue as usize + self.scrolling_offset].split("/").last().unwrap_or("");
+        let line = songs[self.cursor_index_queue + self.scrolling_offset].split("/").last().unwrap_or("");
         let line = self.draw_entry_centered(line)?;
         // playback bar
         write!(self.handle, "{opening_box1}");
@@ -184,11 +184,11 @@ impl Tui<'_> {
 
     fn __draw_safe(&mut self) -> Result<(), std::io::Error> {
         let songs = &crate::PLAYLIST.read();
-        if self.cursor_index_queue as usize >= songs.len() {
+        if self.cursor_index_queue >= songs.len() {
             self.cursor_index_queue = songs.len() - 1;
             SONG_INDEX.store(self.cursor_index_queue, Relaxed);
         }
-        let song = songs[self.cursor_index_queue as usize].split("/").last().unwrap_or("");
+        let song = songs[self.cursor_index_queue].split("/").last().unwrap_or("");
 
         self.__blankout_terminal();
         writeln!(self.handle, "{song}");
@@ -227,7 +227,7 @@ impl Tui<'_> {
     fn draw_entry_centered(&mut self, text: &str) -> Result<String, std::io::Error> {
         let padding = 0;
 
-        let pad_len = match self.width.checked_sub((text.len()).try_into().unwrap()) {
+        let pad_len = match self.width.checked_sub(text.len().try_into().unwrap()) {
             Some(n) => {
                 match n.checked_sub(2) {
                     Some(n) => (n / 2) as usize,
