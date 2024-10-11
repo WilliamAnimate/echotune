@@ -26,14 +26,10 @@ impl Song {
         s
     }
 
-    fn reset(&mut self) {
-        self.sink.stop();
-    }
-
     /// changes the currently playing song based on crate::SONG_INDEX
     /// you needn't worry about synchronisation or whatnot.
     pub fn rejitter_song(&mut self) {
-        self.reset();
+        self.sink.stop();
         let song = crate::SONG_INDEX.load(Relaxed);
         self.append_song(song);
         self.play();
