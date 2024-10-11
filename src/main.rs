@@ -47,11 +47,8 @@ fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
     let home = std::env::var("HOME").unwrap_or_else(|_| String::new());
     for line in reader.lines() {
         let mut line = line.unwrap(); // tf
-        // PERF: don't replace nothing and allocate a new String, unless we actually do start with ~
-        // maybe. idfk. this only runs once as part of initialization.
-        if line.starts_with('~') {
-            line = line.replacen('~', &home, 1);
-        } else if line.starts_with("//") {
+        line = line.replacen('~', &home, 1);
+        if line.starts_with("//") {
             continue; // its a comment; skip
         }
         lines.push(line);
