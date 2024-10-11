@@ -1,11 +1,8 @@
 // this crappy TUI engine is very high overhead; the code, in debug, has a catastrophically high,
 // 0.0% CPU usage. This was done on an AMD A4-6210 with AMD Radeon R3 Graphics (4) @ 1.80 GHz.
-// any performance improvements should be considered.
 
 #![allow(unused_must_use)]
 
-// N.B. Performance improvements come from reducing allocations and memory copying.
-// Do not premature optimize. If statements cost nothing.
 use std::io::{stdout, StdoutLock, BufWriter, Write};
 use std::sync::atomic::Ordering::Relaxed;
 use crate::SONG_INDEX;
@@ -35,7 +32,7 @@ impl Tui<'_> {
     /// it is recommended to create this on another thread.
     pub fn init() -> Tui<'static> {
         // lock stdout for perf; no other component should write directly there.
-        // panic! writes to stderr
+        // panic! writes to stderr, and can be captured via redirection (2>)
         let stdout = stdout().lock();
         // to avoid excessive syscalls (which yields the current thread and requires a context
         // switch, so increases overhead on the system itself), we buffer the stdout.
@@ -111,22 +108,14 @@ impl Tui<'_> {
     }
 
     fn __calculate_offset(&mut self) {
-        // if (self.cursor_index_queue as usize) > self.height as usize - self.scrolling_offset {
-        // if ((self.height as usize - 12) + self.cursor_index_queue as usize) > self.scrolling_offset {
-        //     self.scrolling_offset += 1;
-        // }
         if self.cursor_index_queue as usize >= self.height as usize - 12 + self.scrolling_offset {
             self.scrolling_offset += 1;
         }
-        // else if (self.cursor_index_queue as usize) < self.height as usize - 12 - self.scrolling_offset {
         else if (self.cursor_index_queue as usize) <= self.scrolling_offset {
-            // self.scrolling_offset.saturating_sub(1);
             self.scrolling_offset = self.cursor_index_queue as usize;
         }
     }
 
-    // PERF: do not use Box<dyn> here. the indirecton may cause perf degradation, and this is a hot
-    // code path.
     fn __draw_full(&mut self) -> Result<(), std::io::Error> {
         let songs = &crate::PLAYLIST.read();
 
@@ -142,7 +131,6 @@ impl Tui<'_> {
         self.__blankout_terminal();
         writeln!(self.handle, "current song index: {}, SONG_INDEX: {}, len: {}", self.cursor_index_queue, SONG_INDEX.load(Relaxed), songs.len());
         self.handle.flush();
-        // writeln!(self.handle, "timings: {:?}", std::time::Instant::now())?;
         // TODO: make this only calculate once in determine_terminal_size, when size changes?
         let opening_box = self.draw_box::<true>("queue", self.width);
         let closing_box = self.draw_box::<false>("", self.width);
@@ -150,12 +138,6 @@ impl Tui<'_> {
         let closing_box2 = self.draw_box::<false>("asdadsad", self.width);
 
         writeln!(self.handle, "{opening_box}");
-
-        // FIXME: make datatypes consistent (keep it all usize? pleas-)
-        // that might be a micro-optimization; idk if thats really gonna give such a big runtime
-        // impact
-        // but this _is_ a hot code path
-        // /shrug
 
         // HACK: for some reason, this code thinks cursor_index_queue^self.scrolling_offset is the
         // currently selected song. subtract it now.
