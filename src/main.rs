@@ -54,6 +54,7 @@ fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
         lines.push(line);
     }
     let _ = lines.pop(); // the last element is nothing, for some reason. get rid of it now.
+    lines.shrink_to_fit();
 
     Ok(())
 }
