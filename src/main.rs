@@ -47,10 +47,10 @@ fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
     let home = std::env::var("HOME").unwrap_or_else(|_| String::new());
     for line in reader.lines() {
         let mut line = line.unwrap(); // tf
-        line = line.replacen('~', &home, 1);
         if line.starts_with("//") {
             continue; // its a comment; skip
         }
+        line = line.replacen('~', &home, 1);
         lines.push(line);
     }
     let _ = lines.pop(); // the last element is nothing, for some reason. get rid of it now.
