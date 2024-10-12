@@ -201,7 +201,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 send_control_errorless!(DestroyAndExit, audio_over_mtx);
                 break;
             } else {
-                SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed);
+                SONG_INDEX.store(song_index + 1, Relaxed);
                 audio.rejitter_song();
             }
         } else {
