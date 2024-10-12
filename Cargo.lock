@@ -630,7 +630,7 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 [[package]]
 name = "rodio"
 version = "0.19.0"
-source = "git+https://github.com/WilliamAnimate/rodio-iwantthetotalduration.git#c3daa0280b868df34471a8a265e465063c00b3a7"
+source = "git+https://github.com/WilliamAnimate/rodio-iwantthetotalduration.git?branch=upstream_stable#8c965bf640ba29654fcf2c216a94d72b7a9f196b"
 dependencies = [
  "claxon",
  "cpal",

@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 file-format = "0.25.0"
 lazy_static = "1.5.0"
 parking_lot = "0.12.3"
-rodio = { git = "https://github.com/WilliamAnimate/rodio-iwantthetotalduration.git" }
+rodio = { git = "https://github.com/WilliamAnimate/rodio-iwantthetotalduration.git", branch = "upstream_stable" }
 terminal_size = { version = "0.3.0", default-features = false }
 termios = "0.3.3"
 
