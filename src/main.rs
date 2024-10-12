@@ -118,74 +118,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let (atx, arx) = channel();
-    let atx = Arc::new(atx);
-    let main_atx = atx.clone();
-    let audio = spawn(move || {
-        let mut audio = song::Song::new();
-        audio.play();
-        loop {
-            let receive = arx.try_recv();
-            if let Ok(k) = receive {
-                match k {
-                    DestroyAndExit => break,
-                    PrevSong | NextSong => audio.rejitter_song(),
-                    TogglePause => if audio.sink.is_paused() {audio.play()} else {audio.pause()} // why no ternary operator in rust
-                    VolumeUp => {
-                        let prev_vol = audio.sink.volume();
-                        audio.sink.set_volume(prev_vol + 0.1);
-                    },
-                    VolumeDown => {
-                        let prev_vol = audio.sink.volume();
-                        let request_vol = prev_vol - 0.1;
-                        // no .saturating_sub for f32 cause primitive type, so we do this:
-                        let normalized_vol = if request_vol < 0.0 { 0.0 } else { request_vol };
-                        audio.sink.set_volume(normalized_vol);
-                    },
-                    // seeking may fail. if so, then silently fail, because who cares??
-                    SeekForward => {
-                        let _ = audio.sink.try_seek(audio.sink.get_pos() + std::time::Duration::from_secs(5));
-                    }
-                    SeekBackward => {
-                        let _ = audio.sink.try_seek(audio.sink.get_pos().saturating_sub(std::time::Duration::from_secs(5)));
-                    }
-                    _na => {
-                        #[cfg(debug_assertions)]
-                        eprintln!("the operation {_na:?} is not applicable for audio");
-                    }
-                }
-            }
-
-            if audio.sink.empty() {
-                let song_index = SONG_INDEX.load(Relaxed);
-                if CFG_IS_LOOPED.load(Relaxed) {
-                    audio.rejitter_song();
-                } else if song_index >= PLAYLIST.read().len() - 1 { // playlist len always + 1 because math
-                    send_control_errorless!(DestroyAndExit, audio_over_mtx);
-                    break;
-                } else {
-                    SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed);
-                    audio.rejitter_song();
-                }
-            } else {
-                // task: synchronise global variables based on what we have.
-
-                // there is a bug here: sometimes, this returns None.
-                // some mp3s work, but others don't. i dont know why precisely.
-                let total_dur = match audio.total_duration {
-                    Some(n) => n.as_secs(),
-                    None => 0,
-                };
-                SONG_CURRENT_LEN.store(audio.sink.get_pos().as_secs(), Relaxed);
-                SONG_TOTAL_LEN.store(total_dur, Relaxed);
-
-                VOLUME_LEVEL.store(audio.sink.volume(), Relaxed);
-            }
-
-            std::thread::sleep(std::time::Duration::from_millis(50));
-        }
-    });
-
     let _input = spawn(move || {
         let mut input = input::Input::from_nothing_and_apply();
         loop {
@@ -200,7 +132,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if PLAYLIST.read().len() != 1 {
                         let i = SONG_INDEX.load(Relaxed);
                         SONG_INDEX.store(i + 1, Relaxed);
-                        send_control_errorless!(NextSong, rtx, atx);
+                        send_control_errorless!(NextSong, rtx, mtx);
                     }
                 }
                 PrevSong => {
@@ -209,30 +141,85 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         None => continue,
                     };
                     SONG_INDEX.store(sub, Relaxed);
-                    send_control_errorless!(PrevSong, rtx, atx);
+                    send_control_errorless!(PrevSong, rtx, mtx);
                 }
                 No => (), // there is nothing
                 signal => {
-                    send_control_errorless!(signal, rtx, atx);
+                    send_control_errorless!(signal, rtx, mtx);
                 }
             }
         }
     });
 
+    let mut audio = song::Song::new();
+    audio.play();
     loop {
-        let recv = mrx.recv().unwrap();
-        match recv {
-            DestroyAndExit => {
-                send_control!(DestroyAndExit, main_rtx, main_atx);
+        let receive = mrx.try_recv();
+        if let Ok(k) = receive {
+            match k {
+                DestroyAndExit => {
+                    send_control!(DestroyAndExit, main_rtx);
 
-                // wait for the threads to finish
-                // FIXME: input doesnt seem to work. it hangs.
-                __exit_await_thread!(render, audio);
+                    // wait for the threads to finish
+                    // FIXME: input doesnt seem to work. it hangs.
+                    __exit_await_thread!(render);
 
-                break;
+                    break;
+                }
+                PrevSong | NextSong => audio.rejitter_song(),
+                TogglePause => if audio.sink.is_paused() {audio.play()} else {audio.pause()} // why no ternary operator in rust
+                VolumeUp => {
+                    let prev_vol = audio.sink.volume();
+                    audio.sink.set_volume(prev_vol + 0.1);
+                },
+                VolumeDown => {
+                    let prev_vol = audio.sink.volume();
+                    let request_vol = prev_vol - 0.1;
+                    // no .saturating_sub for f32 cause primitive type, so we do this:
+                    let normalized_vol = if request_vol < 0.0 { 0.0 } else { request_vol };
+                    audio.sink.set_volume(normalized_vol);
+                },
+                // seeking may fail. if so, then silently fail, because who cares??
+                SeekForward => {
+                    let _ = audio.sink.try_seek(audio.sink.get_pos() + std::time::Duration::from_secs(5));
+                }
+                SeekBackward => {
+                    let _ = audio.sink.try_seek(audio.sink.get_pos().saturating_sub(std::time::Duration::from_secs(5)));
+                }
+                _na => {
+                    #[cfg(debug_assertions)]
+                    eprintln!("the operation {_na:?} is not applicable for audio");
+                }
             }
-            _ => (), // dont care
-        };
+        }
+
+        if audio.sink.empty() {
+            let song_index = SONG_INDEX.load(Relaxed);
+            if CFG_IS_LOOPED.load(Relaxed) {
+                audio.rejitter_song();
+            } else if song_index >= PLAYLIST.read().len() - 1 { // playlist len always + 1 because math
+                send_control_errorless!(DestroyAndExit, audio_over_mtx);
+                break;
+            } else {
+                SONG_INDEX.store(SONG_INDEX.load(Relaxed) + 1, Relaxed);
+                audio.rejitter_song();
+            }
+        } else {
+            // task: synchronise global variables based on what we have.
+
+            // there is a bug here: sometimes, this returns None.
+            // some mp3s work, but others don't. i dont know why precisely.
+            let total_dur = match audio.total_duration {
+                Some(n) => n.as_secs(),
+                None => 0,
+            };
+            SONG_CURRENT_LEN.store(audio.sink.get_pos().as_secs(), Relaxed);
+            SONG_TOTAL_LEN.store(total_dur, Relaxed);
+
+            VOLUME_LEVEL.store(audio.sink.volume(), Relaxed);
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(50));
     }
 
     Ok(())
