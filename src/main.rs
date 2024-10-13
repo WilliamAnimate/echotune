@@ -52,8 +52,8 @@ fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
             continue; // its a comment; skip
         }
         line = line.replacen('~', &home, 1);
-        if File::open(&line)?.metadata()?.permissions().readonly() {
-            lines.push(line);
+        if File::open(&line).is_ok() {
+            lines.push(line); // file exists, therefore, push it onto the playlist
         }
     }
     lines.shrink_to_fit();
