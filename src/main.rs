@@ -1,6 +1,7 @@
 mod song;
 mod input;
 mod tui;
+mod configuration;
 
 use std::sync::{atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering::Relaxed}, mpsc::channel, Arc};
 use parking_lot::RwLock;
@@ -69,6 +70,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use std::thread::spawn;
     use echotune::SongControl::*;
     use file_format::Kind;
+
+    let cfg = configuration::Config::parse(echotune::ConfigurationMode::Default);
+    if cfg.main.crash_on_execute {
+        panic!("nya~");
+    }
 
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
