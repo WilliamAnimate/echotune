@@ -198,7 +198,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let song_index = SONG_INDEX.load(Relaxed);
             if song_index >= PLAYLIST.read().len() - 1 { // playlist len always + 1 because math
                 send_control_errorless!(DestroyAndExit, audio_over_mtx);
-                break;
             } else if !CFG_IS_LOOPED.load(Relaxed) {
                 SONG_INDEX.store(song_index + 1, Relaxed);
             }
