@@ -9,12 +9,36 @@ static DEFAULT_CFG_PATH: &'static str = "Library/Preferences/echotune/echotune.t
 
 #[derive(Deserialize, Debug)]
 pub struct Config {
-    pub main: TomlMain
+    pub main: TomlMain,
+    pub playlist: TomlPlaylist,
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(default)]
 pub struct TomlMain {
     pub crash_on_execute: bool,
+}
+impl Default for TomlMain {
+    fn default() -> Self {
+        Self {
+            crash_on_execute: false,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(default)]
+pub struct TomlPlaylist {
+    pub never_use: bool,
+    pub highlighted_color: String,
+}
+impl Default for TomlPlaylist {
+    fn default() -> Self {
+        Self {
+            never_use: false,
+            highlighted_color: "f5c2e7".to_string(),
+        }
+    }
 }
 
 impl Config {
