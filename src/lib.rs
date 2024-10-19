@@ -47,7 +47,7 @@ pub enum FileFormat {
 }
 
 #[derive(PartialEq)]
-pub enum ConfigurationMode<'a> {
+pub enum ConfigurationPath<'a> {
     Default,
     Custom(&'a str)
 }

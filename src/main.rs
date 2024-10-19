@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     use echotune::SongControl::*;
     use echotune::FileFormat;
 
-    let cfg = configuration::Config::parse(echotune::ConfigurationMode::Default);
+    let cfg = configuration::Config::parse(echotune::ConfigurationPath::Default);
     if cfg.main.crash_on_execute {
         panic!("nya~");
     }
