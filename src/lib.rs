@@ -39,7 +39,7 @@ pub enum RenderMode {
 }
 
 #[derive(PartialEq)]
-pub enum ConfigurationMode<'a> {
+pub enum ConfigurationPath<'a> {
     Default,
     Custom(&'a str)
 }
