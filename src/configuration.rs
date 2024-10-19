@@ -18,12 +18,12 @@ pub struct TomlMain {
 }
 
 impl Config {
-    pub fn parse(to_parse: echotune::ConfigurationMode) -> Self {
+    pub fn parse(to_parse: echotune::ConfigurationPath) -> Self {
         use std::fs::read_to_string;
 
         let file = match to_parse {
-            echotune::ConfigurationMode::Default => DEFAULT_CFG_PATH,
-            echotune::ConfigurationMode::Custom(s) => s
+            echotune::ConfigurationPath::Default => DEFAULT_CFG_PATH,
+            echotune::ConfigurationPath::Custom(s) => s
         };
         #[allow(deprecated)]
         let file = format!("{}/{}", std::env::home_dir().unwrap().to_string_lossy().to_string(), file);
