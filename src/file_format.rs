@@ -2,9 +2,10 @@ use std::{io::{BufReader, Read, Seek}, fs::File};
 use echotune::FileFormat;
 
 static FILE_HEADERS: &[(&[u8], FileFormat, u64)] = &[
-    ( b"OggS", FileFormat::Audio, 0 ),
-    ( b"ID3", FileFormat::Audio, 0 ),
-    ( b"fLaC", FileFormat::Audio, 0 ),
+    ( b"OggS", FileFormat::Audio, 0 ), // .ogg
+    ( b"ID3", FileFormat::Audio, 0 ),  // .mp3
+    ( b"fLaC", FileFormat::Audio, 0 ), // .flac
+    ( b"RIFF", FileFormat::Audio, 0 ), // .wav
 ];
 
 /// because `file-format is bloated
