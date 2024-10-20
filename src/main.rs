@@ -1,8 +1,10 @@
 mod song;
 mod input;
 mod tui;
+mod file_format;
 
 use std::sync::{atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering::Relaxed}, mpsc::channel, Arc};
+use std::{io::{BufReader, BufRead}, fs::File};
 use parking_lot::RwLock;
 
 macro_rules! send_control_errorless {
@@ -38,15 +40,14 @@ lazy_static::lazy_static!{
     static ref VOLUME_LEVEL: echotune::AtomicF32 = echotune::AtomicF32::new(0.0);
 }
 
-fn parse_playlist(file: &str) -> Result<(), Box<dyn std::error::Error>> {
-    use std::{io::{BufReader, BufRead}, fs::File};
-
-    let reader = BufReader::new(File::open(file)?);
-
+fn parse_playlist(file: BufReader<File>) -> Result<(), Box<dyn std::error::Error>> {
     let mut lines = PLAYLIST.write();
     let home = std::env::var("HOME").unwrap_or_else(|_| String::new());
-    for line in reader.lines() {
-        let mut line = line.unwrap(); // tf
+    for line in file.lines() {
+        let mut line = match line {
+            Ok(k) => k,
+            Err(err) => return Err(format!("argv[1] should be a media file or echotune-compatable playlist.\n{err}").into()),
+        };
         if line.starts_with("//") {
             continue; // its a comment; skip
         }
@@ -68,7 +69,7 @@ fn quit_with(e: &str, s: &str) -> Result<std::convert::Infallible, Box<dyn std::
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use std::thread::spawn;
     use echotune::SongControl::*;
-    use file_format::Kind;
+    use echotune::FileFormat;
 
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
@@ -76,17 +77,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let file = &args[1];
+    let mut reader = BufReader::new(File::open(file)?);
+    let fmt = file_format::check_file(&mut reader)?;
     let mut render_requested_mode = echotune::RenderMode::Full;
 
-    match file_format::FileFormat::from_file(file)?.kind() {
-        Kind::Audio => {
+    match fmt {
+        echotune::FileFormat::Other => parse_playlist(reader)?,
+        // FIXME: this assumes audio
+        // may break when playing non-audio files
+        _ => {
             let mut lines = PLAYLIST.write();
             render_requested_mode = echotune::RenderMode::Safe; // only one song, so do minimal
             lines.push(file.to_string());
-        },
-        Kind::Other => parse_playlist(file)?,
-        filekind => {
-            let _ = quit_with(&format!("argv[1] should be a media file or echotune-compatable playlist. media type of {filekind:?} is not supported."), "argv[1] unsupported")?;
         },
     };
 
