@@ -83,9 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match fmt {
         echotune::FileFormat::Other => parse_playlist(reader)?,
-        // FIXME: this assumes audio
-        // may break when playing non-audio files
-        _ => {
+        echotune::FileFormat::Audio => {
             let mut lines = PLAYLIST.write();
             render_requested_mode = echotune::RenderMode::Safe; // only one song, so do minimal
             lines.push(file.to_string());

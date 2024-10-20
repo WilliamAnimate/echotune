@@ -40,13 +40,7 @@ pub enum RenderMode {
 
 #[derive(PartialEq, Debug)]
 pub enum FileFormat {
-    Mp3,
-    Ogg,
-    Wav,
-    Flac,
-    // additional formats, if the user compiles the program with it:
-    Mp4,
-    Aac,
+    Audio,
 
     // and if no match
     Other
