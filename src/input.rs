@@ -5,8 +5,6 @@ use termios::*;
 
 pub struct Input<'a> {
     handle: io::StdinLock<'a>,
-    fd: i32,
-    original_terminal_config: Termios,
 }
 
 impl<'a> Input<'_> {
@@ -16,11 +14,7 @@ impl<'a> Input<'_> {
         let handle = stdin.lock();
         let fd = handle.as_raw_fd();
 
-        // current terminal. save it to restore the terminal upon exiting
-        let original_termios = Termios::from_fd(fd).unwrap();
-
-        // we need a mutable copy of the terminal settings, to mess around with
-        let mut raw = original_termios;
+        let mut raw = Termios::from_fd(fd).unwrap();
 
         // disable echoing of user input
         raw.c_lflag &= !(ECHO | ICANON | IEXTEN | ISIG);
@@ -30,8 +24,6 @@ impl<'a> Input<'_> {
 
         Input {
             handle,
-            fd,
-            original_terminal_config: original_termios,
         }
     }
 
@@ -102,18 +94,6 @@ impl<'a> Input<'_> {
         }
 
         ret
-    }
-
-    pub fn restore_terminal(&self) -> Result<(), std::io::Error> {
-        tcsetattr(self.fd, TCSANOW, &self.original_terminal_config)
-    }
-}
-
-impl Drop for Input<'_> {
-    fn drop(&mut self) {
-        if let Err(err) = self.restore_terminal() {
-            eprintln!("can't restore the terminal to its original state. THIS IS A BUG!\n{err}");
-        }
     }
 }
 

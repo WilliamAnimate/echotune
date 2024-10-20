@@ -125,7 +125,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let i = input.blocking_wait_for_input();
             match i {
                 DestroyAndExit => {
-                    let _ = input.restore_terminal();
                     send_control_errorless!(DestroyAndExit, ctrlc_mtx);
                     break;
                 },
