@@ -5,11 +5,11 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-basic-toml = "0.1.9"
+basic-toml = { version = "0.1.9", optional = true }
 lazy_static = "1.5.0"
 parking_lot = "0.12.3"
 rodio = { git = "https://github.com/WilliamAnimate/rodio-iwantthetotalduration.git", branch = "upstream_stable" }
-serde = { version = "1.0.210", features = ["serde_derive"] }
+serde = { version = "1.0.210", optional = true, features = ["serde_derive"] }
 terminal_size = { version = "0.3.0", default-features = false }
 termios = "0.3.3"
 
@@ -27,4 +27,7 @@ strip = true
 inherits = "release"
 debug = true
 strip = false
+
+[features]
+configuration = [ "basic-toml", "serde" ]
 
