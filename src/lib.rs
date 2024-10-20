@@ -44,6 +44,14 @@ pub enum ConfigurationPath<'a> {
     Custom(&'a str)
 }
 
+#[derive(PartialEq, Debug)]
+pub enum FileFormat {
+    Audio,
+
+    // and if no match
+    Other
+}
+
 pub struct AtomicF32(AtomicUsize);
 
 /// no hardware support bruh
