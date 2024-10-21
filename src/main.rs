@@ -70,7 +70,6 @@ fn quit_with(e: &str, s: &str) -> Result<std::convert::Infallible, Box<dyn std::
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use std::thread::spawn;
     use echotune::SongControl::*;
-    use echotune::FileFormat;
 
     let cfg = configuration::Config::parse(echotune::ConfigurationPath::Default);
     if cfg.main.crash_on_execute {
