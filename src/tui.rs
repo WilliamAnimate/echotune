@@ -63,7 +63,7 @@ impl Tui<'_> {
     pub fn tick(&mut self) {
         let time = std::time::Instant::now();
         self.rerender_display();
-        writeln!(self.handle, "time taken to draw last frame: {:?}", time.elapsed());
+        writeln!(self.handle, "time taken to draw last frame: {}µs", time.elapsed().as_micros());
         self.handle.flush();
     }
 
