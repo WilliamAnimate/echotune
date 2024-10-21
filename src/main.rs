@@ -4,9 +4,9 @@ mod tui;
 mod file_format;
 mod configuration;
 
-use std::sync::{atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering::Relaxed}, mpsc::channel, Arc};
+use std::sync::{atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering::Relaxed}, RwLock, mpsc::channel, Arc};
 use std::{io::{BufReader, BufRead}, fs::File};
-use parking_lot::RwLock;
+// use parking_lot::RwLock;
 
 macro_rules! send_control_errorless {
     ($signal:expr, $($tx:expr),*) => {
@@ -42,7 +42,7 @@ lazy_static::lazy_static!{
 }
 
 fn parse_playlist(file: BufReader<File>) -> Result<(), Box<dyn std::error::Error>> {
-    let mut lines = PLAYLIST.write();
+    let mut lines = PLAYLIST.write().unwrap();
     let home = std::env::var("HOME").unwrap_or_else(|_| String::new());
     for line in file.lines() {
         let mut line = match line {
@@ -90,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match fmt {
         echotune::FileFormat::Other => parse_playlist(reader)?,
         echotune::FileFormat::Audio => {
-            let mut lines = PLAYLIST.write();
+            let mut lines = PLAYLIST.write().unwrap();
             render_requested_mode = echotune::RenderMode::Safe; // only one song, so do minimal
             lines.push(file.to_string());
         },
@@ -135,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     break;
                 },
                 NextSong => {
-                    if PLAYLIST.read().len() != 1 {
+                    if PLAYLIST.read().unwrap().len() != 1 {
                         let i = SONG_INDEX.load(Relaxed);
                         SONG_INDEX.store(i + 1, Relaxed);
                         send_control_errorless!(NextSong, rtx, mtx);
@@ -201,7 +201,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if audio.sink.empty() {
             let song_index = SONG_INDEX.load(Relaxed);
-            if song_index >= PLAYLIST.read().len() - 1 { // playlist len always + 1 because math
+            if song_index >= PLAYLIST.read().unwrap().len() - 1 { // playlist len always + 1 because math
                 send_control_errorless!(DestroyAndExit, audio_over_mtx);
             } else if !CFG_IS_LOOPED.load(Relaxed) {
                 SONG_INDEX.store(song_index + 1, Relaxed);

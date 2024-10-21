@@ -39,7 +39,7 @@ impl Song {
         use std::{fs::File, io::BufReader};
         use rodio::Source;
 
-        let to_open = &crate::PLAYLIST.read();
+        let to_open = &crate::PLAYLIST.read().unwrap();
         if index >= to_open.len() {
             // we've overflowed. callers account for this, so return immedately.
             return;

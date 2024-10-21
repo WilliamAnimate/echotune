@@ -117,7 +117,7 @@ impl Tui<'_> {
     }
 
     fn __draw_full(&mut self) -> Result<(), std::io::Error> {
-        let songs = &crate::PLAYLIST.read();
+        let songs = &crate::PLAYLIST.read().unwrap();
 
         if self.cursor_index_queue >= songs.len() {
             // wrap back to the size of songs; the user is trying to access songs.len() + 1
@@ -183,7 +183,7 @@ impl Tui<'_> {
     }
 
     fn __draw_safe(&mut self) -> Result<(), std::io::Error> {
-        let songs = &crate::PLAYLIST.read();
+        let songs = &crate::PLAYLIST.read().unwrap();
         if self.cursor_index_queue >= songs.len() {
             self.cursor_index_queue = songs.len() - 1;
             SONG_INDEX.store(self.cursor_index_queue, Relaxed);
